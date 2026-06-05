@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RO-ALERT browser</title>
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ===== TOP NAVIGATION ===== -->
+  <header class="topnav" id="topnav">
+    <div class="topnav-brand">
+      <span class="logo">◬</span>
+      <span class="brand-text">RO-ALERT <small>browser</small></span>
+    </div>
+    <nav class="topnav-views" id="view-tabs">
+      <button class="view-tab active" data-view="dashboard" data-i18n="view_dashboard">Dashboard</button>
+      <button class="view-tab" data-view="feed" data-i18n="view_feed">Feed</button>
+      <button class="view-tab" data-view="location" disabled data-i18n="view_location">Local</button>
+    </nav>
+    <div class="topnav-controls">
+      <span class="daterange" id="daterange-label"></span>
+      <button id="btn-clear-all" class="link-btn" data-i18n="clear_all">Reset</button>
+      <div class="langtoggle" id="langtoggle">
+        <button class="lbtn active" data-lang="ro">RO</button>
+        <button class="lbtn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== SIDEBAR + MAIN ===== -->
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-tabs" id="sidebar-tabs">
+        <button class="stab active" data-mode="console" data-i18n="sidebar_console">Consolă</button>
+        <button class="stab" data-mode="briefing" data-i18n="sidebar_briefing">Briefing</button>
+      </div>
+      <div class="search-wrap">
+        <input type="search" id="search" data-i18n-ph="search_ph" placeholder="Caută în mesaje…">
+      </div>
+      <div class="date-range" id="date-range"></div>
+      <div class="filter-actions">
+        <span id="result-count" class="result-count"></span>
+        <button id="sidebar-clear" class="link-btn" data-i18n="sidebar_clear">Resetează filtrele</button>
+      </div>
+      <div id="facets" class="facets"></div>
+      <div class="sidebar-stats" id="sidebar-stats"></div>
+    </aside>
+
+    <main class="content" id="content-main">
+      <!-- Rendered by view modules -->
+    </main>
+  </div>
+
+  <!-- ===== DETAIL DRAWER ===== -->
+  <div class="drawer-overlay hidden" id="drawer-overlay"></div>
+  <aside class="drawer hidden" id="drawer">
+    <button class="drawer-close" id="drawer-close">&times;</button>
+    <div id="drawer-body"></div>
+  </aside>
+
+  <!-- ===== SCRIPTS (order matters) ===== -->
+  <script src="vendor/leaflet.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <!-- embedded data bundles (work under file://, no server needed) -->
+  <script src="../web/data/alerts.js"></script>
+  <script src="../web/data/meta.js"></script>
+  <script src="../web/data/geo.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/feed.js"></script>
+  <script src="js/location.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
