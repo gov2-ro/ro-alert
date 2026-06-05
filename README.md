@@ -1,6 +1,8 @@
 # RO-ALERT Dashboard
 
-&rarr; [lab.gov2.ro/ro-alert](https://lab.gov2.ro/ro-alert/)
+
+
+&rarr; [lab.gov2.ro/ro-alert](https://lab.gov2.ro/ro-alert/) – _POC (Proof of Concept)_
 
 ---
 
