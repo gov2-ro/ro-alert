@@ -32,10 +32,10 @@ function applyFilters(alerts, st) {
         if (!v || !set.has(v)) return false;
       }
     }
-    // local view scoping
-    if (st.view === "local" && st.localJudet) {
-      if (a.judet !== st.localJudet) return false;
-      if (st.localLocality && !(a.localities || []).includes(st.localLocality)) return false;
+    // location view scoping (county drill-down)
+    if (st.view === "location" && st.selectedCounty) {
+      if (countyKey(a.judet) !== countyKey(st.selectedCounty)) return false;
+      if (st.selectedLocality && !(a.localities || []).includes(st.selectedLocality)) return false;
     }
     // date range (compare on YYYY-MM-DD)
     if (from && (!a.date || a.date < from)) return false;
@@ -53,6 +53,6 @@ function applyFilters(alerts, st) {
 function hasActiveFilters(st) {
   if (st.search) return true;
   if (st.dateFrom || st.dateTo) return true;
-  if (st.view === "local" && st.localJudet) return true;
+  if (st.view === "location" && st.selectedCounty) return true;
   return Object.values(st.filters).some((s) => s && s.size);
 }

@@ -1,8 +1,11 @@
 /* Location analytics view: county drill-down with scoped KPIs, charts, and feed. */
 
 function renderLocation(rows, county, container) {
+  // Chips list every locality in the county, independent of the active locality
+  // filter, so users can switch between localities without going back.
+  const countyRows = applyFilters(DATA.alerts, { ...state, selectedLocality: null });
   const localityCounts = new Map();
-  for (const a of rows) {
+  for (const a of countyRows) {
     if (a.localities && a.localities.length) {
       for (const loc of a.localities) {
         localityCounts.set(loc, (localityCounts.get(loc) || 0) + 1);
@@ -17,7 +20,7 @@ function renderLocation(rows, county, container) {
       <span class="location-county-name">${esc(county)} <span class="location-county-count">(${rows.length})</span></span>
     </div>
     ${locEntries.length ? `<div class="locality-chips" id="locality-chips">
-      ${locEntries.map(([loc, cnt]) => `<button class="locality-chip" data-loc="${esc(loc)}">${esc(loc)}<span class="locality-count">${cnt}</span></button>`).join("")}
+      ${locEntries.map(([loc, cnt]) => `<button class="locality-chip${loc === state.selectedLocality ? " active" : ""}" data-loc="${esc(loc)}">${esc(loc)}<span class="locality-count">${cnt}</span></button>`).join("")}
     </div>` : ""}
     <section class="kpis" id="loc-kpis"></section>
     <div class="location-grid">

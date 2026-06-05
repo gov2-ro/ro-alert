@@ -122,13 +122,8 @@ function onCountyClick(name) {
 /* ---- main render ---- */
 let currentRows = [];
 function render() {
-  const rows = applyFilters(DATA.alerts, state);
-  // If location view with locality scoping
-  if (state.view === "location" && state.selectedLocality) {
-    currentRows = rows.filter((a) => (a.localities || []).includes(state.selectedLocality));
-  } else {
-    currentRows = rows;
-  }
+  // applyFilters handles county + locality scoping for the location view.
+  currentRows = applyFilters(DATA.alerts, state);
 
   const main = document.getElementById("content-main");
   // Destroy old charts and map before clearing DOM
