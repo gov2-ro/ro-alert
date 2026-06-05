@@ -6,7 +6,7 @@
   <title>RO-ALERT · Dashboard</title>
   <meta property="og:title" content="RO-ALERT · Dashboard">
   <meta property="og:description" content="Arhiva mesajelor de avertizare publică RO-ALERT — 648 de alerte din februarie–aprilie 2026. Hartă, grafice și acces la fiecare mesaj.">
-  <meta property="og:image" content="../repository/lab.gov2.ro_ro-alert.png">
+  <meta property="og:image" content="https://lab.gov2.ro/ro-alert/repository/lab.gov2.ro_ro-alert.png">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="description" content="Arhiva mesajelor de avertizare publică RO-ALERT — 648 de alerte din februarie–aprilie 2026.">
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <div id="top-notice" style="">Acesta <b>NU ESTE un proiect oficial al Guvernului României</b>. Date preluate de pe <a style="color: lightyellow;" href="https://data.gov.ro/ro/dataset?q=mesaje+ro-alert&organization=inspectoratul-general-pentru-situatii-de-urgenta">data.gov.ro / IGSU</a> (feb - apr 2026)</div>
   <header class="topbar">
     <div class="brand">
       <span class="logo">◬</span>
@@ -137,5 +138,9 @@
     <a href="https://data.gov.ro/ro/dataset?q=mesaje+ro-alert&organization=inspectoratul-general-pentru-situatii-de-urgenta" target="_blank" rel="noopener">data.gov.ro · mesaje RO-ALERT · IGSU</a>
     <span class="footer-range">(februarie – aprilie 2026)</span>
   </footer>
+<style>
+  #top-notice {text-align: center; padding: .5ex; background-color: rgba(255, 255, 255, 0.094); color: white; opacity: .66;}
+  #top-notice:hover {opacity: 1;}
+</style>
 </body>
 </html>
