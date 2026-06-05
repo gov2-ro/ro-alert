@@ -35,11 +35,12 @@ button { font: inherit; cursor: pointer; }
 .brand h1 { font-size: 18px; letter-spacing: .5px; }
 .ver-badge {
   display: inline-block; padding: 1px 7px; border-radius: 10px;
-  font-size: 10px; font-weight: 700; vertical-align: middle; margin-left: 4px;
+  font-size: 10px; font-weight: 700; vertical-align: middle; margin-left: 3px;
   background: var(--panel-2); color: var(--accent); text-decoration: none;
   border: 1px solid var(--border);
 }
 .ver-badge:hover { background: var(--accent); color: #fff; }
+.ver-current { background: var(--accent); color: #fff; }
 .subtitle { color: var(--muted); font-size: 12px; }
 .viewswitch, .langtoggle { display: flex; background: var(--panel-2); border-radius: 8px; padding: 3px; }
 .vbtn, .lbtn {
