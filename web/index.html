@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RO-ALERT · Dashboard</title>
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◬</span>
+      <div>
+        <h1>RO-ALERT</h1>
+        <span class="subtitle" data-i18n="subtitle">Arhiva mesajelor de avertizare publică</span>
+      </div>
+    </div>
+    <nav class="viewswitch" id="viewswitch">
+      <button class="vbtn active" data-view="national" data-i18n="view_national">Național</button>
+      <button class="vbtn" data-view="local" data-i18n="view_local">Local</button>
+    </nav>
+    <div class="topctrl">
+      <span class="daterange" id="daterange-label"></span>
+      <div class="langtoggle" id="langtoggle">
+        <button class="lbtn active" data-lang="ro">RO</button>
+        <button class="lbtn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="search-wrap">
+        <input type="search" id="search" data-i18n-ph="search_ph" placeholder="Caută în mesaje…">
+      </div>
+      <div class="filter-actions">
+        <span id="result-count" class="result-count"></span>
+        <button id="clear-all" class="link-btn" data-i18n="clear_all">Resetează</button>
+      </div>
+      <div id="facets" class="facets"></div>
+    </aside>
+
+    <main class="content">
+      <!-- Local-view picker (hidden in national view) -->
+      <section id="local-picker" class="local-picker hidden">
+        <div class="picker-field">
+          <label data-i18n="pick_judet">Județ</label>
+          <select id="sel-judet"></select>
+        </div>
+        <div class="picker-field">
+          <label data-i18n="pick_locality">Localitate</label>
+          <select id="sel-locality"></select>
+        </div>
+        <div class="picker-hint" data-i18n="local_hint">
+          Vezi avertizările relevante pentru zona ta. Mesajele ERROR au fost emise dar nu au putut fi difuzate.
+        </div>
+      </section>
+
+      <section class="kpis" id="kpis"></section>
+
+      <div class="grid">
+        <section class="panel map-panel">
+          <h2 data-i18n="map_title">Hartă pe județe</h2>
+          <div id="map"></div>
+          <div class="legend" id="map-legend"></div>
+        </section>
+
+        <section class="panel">
+          <h2 data-i18n="timeline_title">Cronologie (alerte / zi)</h2>
+          <div class="chart-box"><canvas id="chart-timeline"></canvas></div>
+        </section>
+
+        <section class="panel">
+          <h2 data-i18n="by_category">După categorie de risc</h2>
+          <div class="chart-box"><canvas id="chart-category"></canvas></div>
+        </section>
+
+        <section class="panel">
+          <h2 data-i18n="by_judet">Top județe</h2>
+          <div class="chart-box"><canvas id="chart-judet"></canvas></div>
+        </section>
+      </div>
+
+      <section class="panel table-panel">
+        <div class="table-head">
+          <h2 data-i18n="alerts_list">Avertizări</h2>
+          <span id="table-count" class="muted"></span>
+        </div>
+        <div class="table-scroll">
+          <table id="alerts-table">
+            <thead>
+              <tr>
+                <th data-sort="sent_at" data-i18n="col_time">Data/ora</th>
+                <th data-sort="judet" data-i18n="col_judet">Județ</th>
+                <th data-sort="risk_category" data-i18n="col_risk">Risc</th>
+                <th data-sort="severitate" data-i18n="col_sev">Severitate</th>
+                <th data-sort="status_trimitere" data-i18n="col_status">Status</th>
+                <th data-i18n="col_msg">Mesaj</th>
+              </tr>
+            </thead>
+            <tbody id="alerts-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Detail drawer -->
+  <div class="drawer-overlay hidden" id="drawer-overlay"></div>
+  <aside class="drawer hidden" id="drawer">
+    <button class="drawer-close" id="drawer-close">×</button>
+    <div id="drawer-body"></div>
+  </aside>
+
+  <script src="vendor/leaflet.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
+  <!-- embedded data bundles (work under file://, no server needed) -->
+  <script src="data/alerts.js"></script>
+  <script src="data/meta.js"></script>
+  <script src="data/geo.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
