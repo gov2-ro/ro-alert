@@ -33,6 +33,13 @@ button { font: inherit; cursor: pointer; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .logo { font-size: 26px; color: var(--accent); }
 .brand h1 { font-size: 18px; letter-spacing: .5px; }
+.ver-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 10px;
+  font-size: 10px; font-weight: 700; vertical-align: middle; margin-left: 4px;
+  background: var(--panel-2); color: var(--accent); text-decoration: none;
+  border: 1px solid var(--border);
+}
+.ver-badge:hover { background: var(--accent); color: #fff; }
 .subtitle { color: var(--muted); font-size: 12px; }
 .viewswitch, .langtoggle { display: flex; background: var(--panel-2); border-radius: 8px; padding: 3px; }
 .vbtn, .lbtn {
@@ -154,3 +161,12 @@ tbody tr:hover { background: var(--panel-2); }
 
 .hidden { display: none !important; }
 @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } .map-panel { grid-row: auto; } }
+
+/* ---------- footer ---------- */
+.site-footer {
+  text-align: center; padding: 14px 18px; border-top: 1px solid var(--border);
+  color: var(--muted); font-size: 12px; background: var(--panel);
+}
+.site-footer a { color: var(--accent); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+.footer-range { margin-left: 8px; opacity: 0.7; }

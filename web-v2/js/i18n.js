@@ -96,6 +96,7 @@ const I18N = {
     status_error: "EROARE",
     status_cancel: "ANULAT",
     open_record: "deschide",
+    footer_source: "Surse date:",
   },
   en: {
     subtitle: "Public warning message archive",
@@ -192,6 +193,7 @@ const I18N = {
     status_error: "ERROR",
     status_cancel: "CANCEL",
     open_record: "open record",
+    footer_source: "Data sources:",
   },
 };
 

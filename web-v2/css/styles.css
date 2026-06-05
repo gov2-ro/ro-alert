@@ -48,6 +48,13 @@ a { color: var(--accent); }
 .logo { font-size: 24px; color: var(--accent); }
 .brand-text { font-size: 17px; font-weight: 700; letter-spacing: 0.3px; }
 .brand-text small { font-weight: 400; color: var(--text-muted); font-size: 13px; }
+.ver-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 10px;
+  font-size: 10px; font-weight: 700; vertical-align: middle; margin-left: 4px;
+  background: var(--bg); color: var(--accent); text-decoration: none;
+  border: 1px solid var(--border);
+}
+.ver-badge:hover { background: var(--accent); color: #fff; }
 
 .topnav-views { display: flex; gap: 4px; background: var(--bg); border-radius: var(--radius-sm); padding: 3px; }
 .view-tab {
@@ -322,3 +329,12 @@ a { color: var(--accent); }
   .topnav-views { order: 3; width: 100%; }
   .kpis { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ===== 14. Footer ===== */
+.site-footer {
+  text-align: center; padding: 14px 18px; border-top: 1px solid var(--border);
+  color: var(--text-muted); font-size: 12px; background: var(--card);
+}
+.site-footer a { color: var(--accent); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+.footer-range { margin-left: 8px; opacity: 0.6; }

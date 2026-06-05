@@ -72,6 +72,7 @@ const I18N = {
     f_source: "Fișier sursă",
     legend_alerts: "alerte",
     no_color: "—",
+    footer_source: "Surse date:",
   },
   en: {
     subtitle: "Public warning message archive",
@@ -144,6 +145,7 @@ const I18N = {
     f_source: "Source file",
     legend_alerts: "alerts",
     no_color: "—",
+    footer_source: "Data sources:",
   },
 };
 
