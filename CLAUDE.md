@@ -4,25 +4,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-A static dashboard for the archive of RO-ALERT public warning messages (648 alerts,
-February–April 2026). Source data comes from data.gov.ro / IGSU. The live POC is at
+A static dashboard for the archive of RO-ALERT public warning messages (monthly files from
+data.gov.ro; February–August 2026 at the time of writing). Source data comes from data.gov.ro / IGSU. The live POC is at
 lab.gov2.ro/ro-alert. The UI and the data are in Romanian; `js/i18n.js` adds English.
 
 ## Commands
 
-There is no build tool, no package manager, no linter and no test suite.
+There is no build tool, no linter and no test suite. `ingest.py` needs `xlrd` and
+`openpyxl`; `build_data.py` uses only the standard library.
 
-- Rebuild the data: `python3 build_data.py` (run from the repo root; standard library only).
-  The script prints totals (sent / error / cancel, date range, county count). Compare them
-  with the previous run to detect a regression.
+- Set up once: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
+- Fetch new months: `.venv/bin/python ingest.py`. The script queries the data.gov.ro CKAN API,
+  downloads new or changed files, and writes `sources/YYYY-MM.csv` and `sources/manifest.json`.
+  It prints `no new data` when nothing changed. Read the manifest `warnings` after each run.
+- Parse local files without network: `.venv/bin/python ingest.py --offline PATH...`.
+- Rebuild the data: `python3 build_data.py` (run from the repo root). The script reads every
+  `sources/*.csv` and prints totals (sent / error / cancel, date range, county count) and the
+  count of duplicates removed. Compare the totals with the previous run to detect a regression.
+- A GitHub Action (`.github/workflows/ingest.yml`) runs both scripts daily and opens a pull
+  request when `sources/` changes. A person reviews each new month before the merge.
 - Run the app: open `index.html` directly in a browser (`file://` works). A local server
   is optional, for example `python3 -m http.server`.
 
 ## Architecture
 
-**Data pipeline (`build_data.py`).** The script reads one aggregated CSV,
-`repository/arhiva-ro-alert/aggregated/csv/mesaje ro-alert gemini.csv`. Git ignores
-`repository/arhiva-ro-alert/`, so a fresh clone cannot rebuild the data. The script enriches
+**Data pipeline (`ingest.py`, `build_data.py`).** `ingest.py` turns the IGSU Excel files into
+one normalized UTF-8 CSV per month, `sources/YYYY-MM.csv`. Git tracks `sources/`, so a fresh
+clone rebuilds without network. Raw downloads go to `repository/arhiva-ro-alert/ckan/` (ignored).
+The script detects the file shape by sheet names (S: summary only, R: summary + report,
+D: raw details), maps columns by header name and records each file in `sources/manifest.json`.
+Shape S files give a manifest entry and no rows. `build_data.py` reads every `sources/*.csv`
+in month order, gives each alert a stable string `id` and removes duplicate ids. It enriches
 each row offline and without an LLM:
 
 - `judet_for` maps the initiator code (`ISUPH`) or an `ISU XX` title tag to a county.

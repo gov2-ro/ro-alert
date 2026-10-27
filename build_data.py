@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Enrich the aggregated RO-ALERT CSV into JSON consumed by the static dashboard.
 
-Reads `repository/arhiva-ro-alert/aggregated/csv/mesaje ro-alert gemini.csv`
-(648 logical records; quoted message bodies span multiple lines) and writes:
+Reads every `sources/YYYY-MM.csv` (written by `ingest.py`) in month order and writes:
   - data/alerts.json : one enriched object per record
   - data/meta.json   : facet value lists + counts, per-judet counts, totals, date range
 
 Run from the project root:  python3 build_data.py
 """
 import csv
+import glob
+import hashlib
 import json
 import os
 import re
@@ -17,8 +18,7 @@ import collections
 from datetime import datetime
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(ROOT, "repository", "arhiva-ro-alert", "aggregated", "csv",
-                   "mesaje ro-alert gemini.csv")
+SRC_DIR = os.path.join(ROOT, "sources")
 OUT_DIR = os.path.join(ROOT, "data")
 
 # --- ISU / initiator code -> county (judet) ----------------------------------
@@ -300,7 +300,32 @@ def parse_dt(s):
 
 
 WEEKDAYS = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"]
-MONTHS = {"26-02": "Februarie", "26-03": "Martie", "26-04": "Aprilie"}
+MONTH_NAMES = ["Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie", "Iulie",
+               "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"]
+
+
+def month_label(ym):
+    """'2026-05' -> 'Mai 2026'."""
+    y, m = ym.split("-")
+    return "%s %s" % (MONTH_NAMES[int(m) - 1], y)
+
+
+def alert_id(r, title, msg):
+    """Stable string id: 'Identificator unic' when present, else a hash of the delivery key.
+
+    One record is one delivery: April 2026 has one row per channel (CBC CMAS, STS) for the
+    same message, and an ALERT and its CANCEL can share title, time and text. So the key
+    also holds the channel, the message type, the status and the audience.
+    """
+    uid = (r.get("Identificator unic") or "").strip()
+    if uid:
+        return uid
+    parts = [title or "", msg or ""] + [
+        (r.get(c) or "").strip()
+        for c in ("Data trimitere", "Tip inregistrare", "Tip mesaj", "Status trimitere", "Audienta")
+    ]
+    key = "|".join(parts)
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
 
 
 def norm(v):
@@ -309,11 +334,21 @@ def norm(v):
 
 
 def main():
-    with open(SRC, encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
+    files = sorted(glob.glob(os.path.join(SRC_DIR, "*.csv")))
+    if not files:
+        raise SystemExit("no sources/*.csv found; run ingest.py first")
+    rows = []
+    for fp in files:
+        base = os.path.basename(fp)
+        with open(fp, encoding="utf-8", newline="") as f:
+            for r in csv.DictReader(f):
+                r["Fisier sursa"] = base
+                rows.append(r)
 
     alerts = []
-    for i, r in enumerate(rows):
+    seen_ids = set()
+    duplicates = 0
+    for r in rows:
         initiator = norm(r.get("Initiator alerta"))
         principal = norm(r.get("Risc principal"))
         asociat = norm(r.get("Risc asociat"))
@@ -330,11 +365,16 @@ def main():
         locations = extract_locations(ro or msg, poligoane)
         src_file = (r.get("Fisier sursa") or "").strip()
         month_key = src_file.replace(".csv", "")
+        aid = alert_id(r, title, msg)
+        if aid in seen_ids:
+            duplicates += 1
+            continue
+        seen_ids.add(aid)
 
         a = {
-            "id": i,
+            "id": aid,
             "source_file": src_file or None,
-            "month": MONTHS.get(month_key, month_key or None),
+            "month": month_label(month_key),
             "title": title,
             "initiator": initiator,
             "judet": judet,
@@ -447,6 +487,7 @@ def main():
     else:
         print("  WARNING: data/romania-counties.geojson missing -> data/geo.js not written")
 
+    print(f"  duplicates removed: {duplicates}")
     print(f"Wrote {len(alerts)} alerts -> data/alerts.json + data/*.js")
     print(f"  sent={meta['sent']} error={meta['error']} cancel={meta['cancel']}")
     print(f"  date range {meta['date_min']} .. {meta['date_max']}")

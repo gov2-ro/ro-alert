@@ -1,0 +1,61 @@
+name: ingest
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Ingest new months from data.gov.ro
+        id: ingest
+        run: |
+          python3 ingest.py | tee ingest.log
+          months=$(sed -n 's/^new: //p' ingest.log | grep -o '20[0-9][0-9]-[0-9][0-9]' | sort -u | paste -sd, - | sed 's/,/, /g')
+          echo "months=${months}" >> "$GITHUB_OUTPUT"
+          {
+            echo "body<<EOF_BODY"
+            echo "New months: ${months:-none}."
+            echo
+            echo "Manifest warnings:"
+            python3 - <<'PY'
+          import json
+          warns = [(e["month"], w) for e in json.load(open("sources/manifest.json")) for w in e["warnings"]]
+          print("\n".join("- %s: %s" % x for x in warns) if warns else "- none")
+          PY
+            echo
+            echo "A person must review each new month before the merge."
+            echo "EOF_BODY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild dashboard data
+        run: python3 build_data.py
+
+      - name: Open pull request
+        if: steps.ingest.outputs.months != ''
+        uses: peter-evans/create-pull-request@v7.0.8
+        with:
+          branch: data/ro-alert-ingest
+          title: "data: RO-ALERT ${{ steps.ingest.outputs.months }}"
+          commit-message: "data: RO-ALERT ${{ steps.ingest.outputs.months }}"
+          body: ${{ steps.ingest.outputs.body }}
+          add-paths: |
+            sources/
+            data/alerts.js
+            data/meta.js
+            data/geo.js

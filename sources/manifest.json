@@ -1,0 +1,439 @@
+[
+  {
+    "dataset": "mesaje-ro-alert-luna-septembrie",
+    "resource_id": "5deb2ce7-b87d-439b-886d-0c1e33c7b3ec",
+    "url": "https://data.gov.ro/dataset/94c06aa2-aba1-4b26-bd3f-ccf916952151/resource/5deb2ce7-b87d-439b-886d-0c1e33c7b3ec/download/mesaje-ro-alert-luna-septembrie.xlsx",
+    "last_modified": "2025-10-29T09:07:19.614948",
+    "sha256": "d57d40cbb944d7f094187d6202d7b0424dd986cac3089733960f2987b92ead1e",
+    "month": "2025-09",
+    "month_source": "dataset title",
+    "shape": "S",
+    "rows": 0,
+    "grand_total": 286,
+    "reports_errors": false,
+    "columns": [],
+    "warnings": [],
+    "summary": [
+      [
+        "Altele",
+        "Alte riscuri",
+        5
+      ],
+      [
+        "Altele",
+        "Animale periculoase",
+        224
+      ],
+      [
+        "Altele",
+        "Copii disparuti",
+        12
+      ],
+      [
+        "Incendii",
+        "Depozit marfuri",
+        4
+      ],
+      [
+        "Incendii",
+        "Transport rutier si feroviar",
+        1
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Furtuni",
+        31
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Inundatii",
+        4
+      ],
+      [
+        "Riscuri si amenintari la adresa securitatii nationale",
+        "Atac aerian",
+        4
+      ],
+      [
+        "Riscuri Tehnologice - Accidente,  avarii si  explozii in activitati",
+        "De transport si depozitare produse periculoase",
+        1
+      ]
+    ]
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-octombrie",
+    "resource_id": "da6202d6-76e9-4924-b012-1d8ca5f5c25f",
+    "url": "https://data.gov.ro/dataset/c22436c4-35ae-49b5-96db-f57cf8785b2f/resource/da6202d6-76e9-4924-b012-1d8ca5f5c25f/download/mesaje-ro-alert-luna-octombrie.xlsx",
+    "last_modified": "2025-11-06T07:27:32.926176",
+    "sha256": "99657169a2255ca9b22731e8e0ed7902c2b3ca7c0f520a99ce3aa65c1051d668",
+    "month": "2025-10",
+    "month_source": "dataset title",
+    "shape": "S",
+    "rows": 0,
+    "grand_total": 146,
+    "reports_errors": false,
+    "columns": [],
+    "warnings": [],
+    "summary": [
+      [
+        "Altele",
+        "Alte riscuri",
+        2
+      ],
+      [
+        "Altele",
+        "Animale periculoase",
+        101
+      ],
+      [
+        "Altele",
+        "Copii disparuti",
+        10
+      ],
+      [
+        "Incendii",
+        "Complexe comerciale",
+        1
+      ],
+      [
+        "Incendii",
+        "Construcții civile",
+        1
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Furtuni",
+        28
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Inundatii",
+        1
+      ],
+      [
+        "Riscuri si amenintari la adresa securitatii nationale",
+        "Atac aerian",
+        1
+      ],
+      [
+        "Riscuri Tehnologice - Accidente,  avarii si  explozii in activitati",
+        "Prăbușiri de construcții, instalații sau amenajări",
+        1
+      ]
+    ]
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-decembrie",
+    "resource_id": "f3c47f50-287c-49e3-98ab-2d01e67cf897",
+    "url": "https://data.gov.ro/dataset/bc9d2eea-61f7-48d2-ad69-4e6a90bf3beb/resource/f3c47f50-287c-49e3-98ab-2d01e67cf897/download/mesaje-ro-alert-luna-decembrie.xlsx",
+    "last_modified": "2026-01-20T13:17:31.292511",
+    "sha256": "620c66da8f82b98561eacdb31b2ff9e229b90a1be346f1f9000c9f437df847ec",
+    "month": "2025-12",
+    "month_source": "dataset title",
+    "shape": "S",
+    "rows": 0,
+    "grand_total": 96,
+    "reports_errors": false,
+    "columns": [],
+    "warnings": [],
+    "summary": [
+      [
+        "Altele",
+        "Alte riscuri",
+        16
+      ],
+      [
+        "Altele",
+        "Animale periculoase",
+        16
+      ],
+      [
+        "Altele",
+        "Copii disparuti",
+        3
+      ],
+      [
+        "Incendii",
+        "Depozit mărfuri",
+        2
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Furtuni",
+        19
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Viscol",
+        34
+      ],
+      [
+        "Riscuri si amenintari la adresa securitatii nationale",
+        "Atac aerian",
+        2
+      ],
+      [
+        "Riscuri Tehnologice - Accidente,  avarii si  explozii in activitati",
+        "De transport rutier, feroviar, maritim, aerian, pe cablu",
+        1
+      ],
+      [
+        "Riscuri Tehnologice - Accidente,  avarii si  explozii in activitati",
+        "De transport si depozitare produse periculoase",
+        3
+      ]
+    ]
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-ianuarie2026",
+    "resource_id": "26c855db-1ba4-4787-9cc5-155abd1b4ce0",
+    "url": "https://data.gov.ro/dataset/b0fe88a8-35fb-4660-b4e5-ff34567432ab/resource/26c855db-1ba4-4787-9cc5-155abd1b4ce0/download/mesaje-ro-alert-luna-ianuarie.xlsx",
+    "last_modified": "2026-03-02T10:31:28.721284",
+    "sha256": "77a8b8b560c8e9572c0fac27e2e1365e895873b89c2955f4b327c127d9cf57ce",
+    "month": "2026-01",
+    "month_source": "dataset title",
+    "shape": "S",
+    "rows": 0,
+    "grand_total": 61,
+    "reports_errors": false,
+    "columns": [],
+    "warnings": [],
+    "summary": [
+      [
+        "Altele",
+        "Animale periculoase",
+        31
+      ],
+      [
+        "Altele",
+        "Copii disparuti",
+        10
+      ],
+      [
+        "Incendii",
+        "Construcții Civile",
+        1
+      ],
+      [
+        "Incendii",
+        "Obiective industriale",
+        1
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Inundații",
+        5
+      ],
+      [
+        "Riscuri Naturale - Fenomene meteorologice periculoase",
+        "Viscol",
+        10
+      ],
+      [
+        "Riscuri si amenintari la adresa securitatii nationale",
+        "Atac aerian",
+        3
+      ]
+    ]
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-februarie-2026",
+    "resource_id": "fe465454-77d3-4aa0-a028-e4905e6f49c9",
+    "url": "https://data.gov.ro/dataset/b39c7b61-d969-4f51-bd66-60e359e5866f/resource/fe465454-77d3-4aa0-a028-e4905e6f49c9/download/mesaje-ro-alert-luna-februarie-final.xlsx",
+    "last_modified": "2026-03-31T09:03:33.549153",
+    "sha256": "37fb52655ad1b3071e781fcba04806d1db2edded171ab546831bbc2fadffb4a9",
+    "month": "2026-02",
+    "month_source": "dataset title",
+    "shape": "R",
+    "rows": 76,
+    "grand_total": 76,
+    "reports_errors": false,
+    "columns": [
+      "Nume si data alerta",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data trimitere",
+      "Status trimitere",
+      "Lista poligoane",
+      "Continut mesaj"
+    ],
+    "warnings": []
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-martie",
+    "resource_id": "30d6130d-c0c3-40fe-aa54-adb672a490dc",
+    "url": "https://data.gov.ro/dataset/ff278877-bad7-4824-acf3-a4f1dac676ab/resource/30d6130d-c0c3-40fe-aa54-adb672a490dc/download/raport-ro-alert-martie-2026.xls",
+    "last_modified": "2026-04-29T08:27:30.535209",
+    "sha256": "782b8b2076fa22720c9e7ae9b2b65a8d1ebfe5688928363ceda576568ddec7d1",
+    "month": "2026-03",
+    "month_source": "dataset title",
+    "shape": "R",
+    "rows": 102,
+    "grand_total": 102,
+    "reports_errors": false,
+    "columns": [
+      "Nr. crt.",
+      "Nume si data alerta",
+      "Tip inregistrare",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data trimitere",
+      "Status trimitere",
+      "Lista poligoane",
+      "Extern",
+      "ID alerta",
+      "Identificator unic",
+      "Tip alerta",
+      "Data izbucnire",
+      "Initiator extern",
+      "Continut mesaj"
+    ],
+    "warnings": []
+  },
+  {
+    "dataset": "mesaje-ro-alert-aprilie",
+    "resource_id": "7d8f8672-5670-4b4c-85b9-2214a7f1cb7d",
+    "url": "https://data.gov.ro/dataset/ce29a821-ee87-4d35-a359-637a3bb7b1c1/resource/7d8f8672-5670-4b4c-85b9-2214a7f1cb7d/download/raport-ro-alert-aprilie-2026.xls",
+    "last_modified": "2026-05-26T11:56:55.525053",
+    "sha256": "6d599508597ec7c59e733203ee82fd9e2df544ccb8a08ad3d58b4ce4f01e8bb8",
+    "month": "2026-04",
+    "month_source": "dataset title",
+    "shape": "D",
+    "rows": 470,
+    "grand_total": null,
+    "reports_errors": true,
+    "columns": [
+      "Nume si data alerta",
+      "Tip inregistrare",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data creare",
+      "Data trimitere",
+      "Status trimitere",
+      "Nr. repetitii",
+      "Interval repetitie",
+      "Data expirare",
+      "Lista poligoane",
+      "Status",
+      "Tip mesaj",
+      "Categorie",
+      "Titlul alertei",
+      "Urgenta",
+      "Severitate",
+      "Audienta",
+      "Continut mesaj",
+      "Cod eveniment"
+    ],
+    "warnings": []
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-mai",
+    "resource_id": "716d1f0f-fb2f-4682-8fbb-e9701d25a705",
+    "url": "https://data.gov.ro/dataset/ab57ba8e-125c-462b-ab19-015e337da1e5/resource/716d1f0f-fb2f-4682-8fbb-e9701d25a705/download/raport-ro-alert-mai-2026.xls",
+    "last_modified": "2026-06-30T08:25:36.198791",
+    "sha256": "152b522343e997b664305a0323f7049ef9984161837add6cc384c07e4f946843",
+    "month": "2026-05",
+    "month_source": "dataset title",
+    "shape": "D",
+    "rows": 618,
+    "grand_total": null,
+    "reports_errors": false,
+    "columns": [
+      "Nr. crt.",
+      "Nume si data alerta",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data trimitere",
+      "Status trimitere",
+      "Lista poligoane",
+      "Continut mesaj"
+    ],
+    "warnings": []
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-iunie",
+    "resource_id": "12ced876-416b-49f1-a59b-6ebf22f52be8",
+    "url": "https://data.gov.ro/dataset/b07fa294-1fa1-4b29-a225-9646db2bd60d/resource/12ced876-416b-49f1-a59b-6ebf22f52be8/download/raport-ro-alert-iunie-2026.xls",
+    "last_modified": "2026-08-31T11:26:59.847927",
+    "sha256": "d05ded11426d3e190a29a4ae4f0f19c7a16a021da4630db8071fe980344d7456",
+    "month": "2026-06",
+    "month_source": "dataset title",
+    "shape": "D",
+    "rows": 1185,
+    "grand_total": null,
+    "reports_errors": false,
+    "columns": [
+      "Nr. crt.",
+      "Nume si data alerta",
+      "Tip inregistrare",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data trimitere",
+      "Status trimitere",
+      "Lista poligoane",
+      "Continut mesaj"
+    ],
+    "warnings": []
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-iulie",
+    "resource_id": "b341ae02-0cb5-40c9-be2a-69ed3b033d68",
+    "url": "https://data.gov.ro/dataset/cf004c3d-e570-4222-a3c7-7874d411f17a/resource/b341ae02-0cb5-40c9-be2a-69ed3b033d68/download/raport-ro-alert-iulie-2026.xls",
+    "last_modified": "2026-08-31T11:34:05.495667",
+    "sha256": "4b6a96b0a2167119f6a8c566fb898c7c85bacbc7629829fb4e6d6d44b4c590c3",
+    "month": "2026-07",
+    "month_source": "dataset title",
+    "shape": "R",
+    "rows": 610,
+    "grand_total": 610,
+    "reports_errors": false,
+    "columns": [
+      "Nr. crt.",
+      "Nume si data alerta",
+      "Tip inregistrare",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data trimitere",
+      "Status trimitere",
+      "Lista poligoane",
+      "Initiator extern",
+      "Continut mesaj",
+      "Cod eveniment"
+    ],
+    "warnings": []
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-august",
+    "resource_id": "8b135a0a-f490-4d99-a0e2-d5195d4bdc82",
+    "url": "https://data.gov.ro/dataset/fdc844dc-711f-4956-a25c-86b165d1214b/resource/8b135a0a-f490-4d99-a0e2-d5195d4bdc82/download/raport-ro-alert-august.xls",
+    "last_modified": "2026-10-23T12:11:27.675500",
+    "sha256": "7a9b07e899bb08b4820f26228c7b47a08f673dd79e3ab8ccbcf829bc27215bfe",
+    "month": "2026-08",
+    "month_source": "dataset title",
+    "shape": "R",
+    "rows": 557,
+    "grand_total": 556,
+    "reports_errors": false,
+    "columns": [
+      "Nume si data alerta",
+      "Tip inregistrare",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data trimitere",
+      "Status trimitere",
+      "Lista poligoane",
+      "Continut mesaj"
+    ],
+    "warnings": [
+      "Grand Total 556 differs from row count 557"
+    ]
+  }
+]
