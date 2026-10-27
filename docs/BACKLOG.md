@@ -16,7 +16,8 @@
 - [ ] Localities: 131 mentions are ambiguous (two places with the same name in one county). Decide whether to pick the larger place or the one nearest to the alert centroid.
 - [x] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`. Done on branch `feat/story-view`.
 - [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
-  runs timed out on connect, 2026-10-27). Needs the VPS details from the owner.
+  runs timed out on connect, 2026-10-27). Deferred by the owner (2026-10-27): do not start
+  until the owner says so.
 - [ ] Deploy script for lab.gov2.ro (Apache on 67.205.1.122). A daily cron job on the VPS
   runs `ingest.py` and `build_data.py`, and publishes the static files to the web folder.
   Publish without review when the manifest has no new warnings; hold the update and tell
@@ -39,7 +40,9 @@
   Built on branch `feat/ckan-ingest`; waits for the owner's decision on the next item.
 - [x] **Defect: dedup by `id` removed 214 valid April rows.** Closed by the alert unit: April
   alerts group by title + `Data creare` + `Tip mesaj`; all 3618 rows are deliveries.
-- [ ] Story view: decide whether "Pe scurt" is the landing tab (now Dashboard is). Official months show only with no filter; decide if a county filter should show the national totals greyed.
+- [ ] Owner decision: make "Pe scurt" the landing tab? Now the page opens on Dashboard.
+- [ ] Owner decision: under a county or date filter, hide the summary-only months (now) or
+  show their national totals greyed? They have no alerts, so a filter cannot apply to them.
 - [ ] Find the cause of the August Grand Total mismatch (557 rows, total 556).
 - [x] UI: show that delivery failures exist only for months that report ERROR rows. Done with
   the alert unit (`meta.months[].reports_errors`).
