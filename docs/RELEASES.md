@@ -1,5 +1,6 @@
 # Releases
 
+- v0.13.0 — 2026-10-27 — Deploy script: `tools/deploy.sh` copies the page files to a local folder or an SSH host, configured from `.env`.
 - v0.12.0 — 2026-10-27 — Audit phase 04, mobile and accessibility: filter drawer on phones, no horizontal overflow down to 320 px, stacked Feed summary; record details in a modal dialog with focus return; keyboard sort and record buttons; data tables behind every chart and a keyboard list for the map; text contrast at least 4.5:1; reduced motion. Browser suite with axe-core (dev only).
 - v0.11.0 — 2026-10-27 — Audit phase 03, shared state, places and language: one facet registry and one update path; active-filter strip in every view; places selected by SIRUTA code with canonical names; shareable URL hash with Back/Forward and record links; accent-insensitive search over place names; `message_language` per alert and a conservative bilingual split; category, month and footer labels in RO and EN.
 - v0.10.0 — 2026-10-27 — Audit phase 02, pipeline reliability: staged ingest with a journal and recovery, exit 0 on no new data, revisions and duplicate resources handled, validation gates in the build (dates, statuses, conflicting ids, delivery conservation), schema version and input hashes in `meta`, tracked county geometry, offline CI with committed workbook fixtures. Data unchanged.

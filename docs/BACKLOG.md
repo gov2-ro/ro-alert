@@ -110,7 +110,9 @@ The audit changed no application code or data. Items below need implementation a
 - [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
   runs timed out on connect, 2026-10-27). Deferred by the owner (2026-10-27): do not start
   until the owner says so.
-- [ ] Deploy script for lab.gov2.ro (Apache on 67.205.1.122). A daily cron job on the VPS
+- [x] Deploy script: `tools/deploy.sh` copies the page files to a local folder or to
+  `DEPLOY_HOST:DEPLOY_PATH` from `.env` (owner request, 2026-10-27). Tested locally only.
+- [ ] Scheduled update on lab.gov2.ro (Apache on 67.205.1.122). A daily cron job on the VPS
   runs `ingest.py` and `build_data.py`, and publishes the static files to the web folder.
   Publish without review when the manifest has no new warnings; hold the update and tell
   the owner when it has. Push the new `sources/` and `data/*.js` to GitHub. Open: SSH user,
@@ -138,8 +140,8 @@ The audit changed no application code or data. Items below need implementation a
 - [ ] Find the cause of the August Grand Total mismatch (557 rows, total 556).
 - [x] UI: show that delivery failures exist only for months that report ERROR rows. Done with
   the alert unit (`meta.months[].reports_errors`).
-- [ ] Deploy to lab.gov2.ro after a data pull request merges. The deploy location is not in
-  this repo.
+- [ ] Deploy to lab.gov2.ro after a data pull request merges. Use `tools/deploy.sh` with the
+  VPS env file. The web folder and SSH user are still open.
 
 ## Boilerplate phrase detection
 

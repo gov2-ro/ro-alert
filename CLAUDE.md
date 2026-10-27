@@ -31,6 +31,8 @@ There is no build tool and no linter. `ingest.py` needs `xlrd` and
   and input hashes in `meta`. `.github/workflows/ci.yml` runs the offline tests.
 - A GitHub Action (`.github/workflows/ingest.yml`) runs both scripts daily and opens a pull
   request when `sources/` changes. A person reviews each new month before the merge.
+- Deploy: `tools/deploy.sh [--env FILE] [--dry-run]` copies the page files to `DEPLOY_PATH`
+  (locally, or on `DEPLOY_HOST` over SSH). Settings are in `.env`; see `.env.example`.
 - Run the app: open `index.html` directly in a browser (`file://` works). A local server
   is optional, for example `python3 -m http.server`.
 

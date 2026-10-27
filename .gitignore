@@ -12,3 +12,7 @@ ingest-result.json
 ingest.log
 sources/.ingest-txn/
 sources/.stage-*/
+
+.env
+.env.*
+!.env.example

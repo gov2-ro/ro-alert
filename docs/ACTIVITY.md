@@ -1,5 +1,23 @@
 # Activity
 
+## 2026-10-27 — Deploy script
+
+**Done**
+- `tools/deploy.sh` reads `DEPLOY_PATH`, `DEPLOY_HOST`, `DEPLOY_PORT` and `DEPLOY_DELETE` from
+  `.env` (or `--env FILE`) and copies the page files with rsync. `--dry-run` lists the changes.
+  `.env.example` documents the keys; Git ignores other `.env` files.
+- Tested on this machine: dry run, first copy, second copy with a stale `js/stale.js` (removed)
+  and a foreign `keep.txt` at the target root (kept), refusal on an uncommitted `js/app.js`,
+  refusal of `DEPLOY_PATH=/`. The copied `js/` is identical to the source. The SSH path is not run.
+
+**Decided**
+- Copy an explicit list of files, not the repo. The page needs only these files; the rest holds
+  sources, tests and documents that must not reach the web folder.
+- Refuse uncommitted changes by default, so that the target matches a commit. The printed short
+  hash identifies the deployed version.
+- Deletion is opt-in and limited to `css/`, `js/` and `vendor/`, so a wrong `DEPLOY_PATH` cannot
+  remove unrelated files at the target root.
+
 ## 2026-10-27 — Audit phase 04: mobile and accessibility (branch `feat/audit-04-access`, Sonnet)
 
 **Done**

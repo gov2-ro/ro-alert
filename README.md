@@ -12,6 +12,20 @@ Sursă date: [data.gov.ro / IGSU](https://data.gov.ro/ro/dataset?q=mesaje+ro-ale
 
 Vezi și: [RO-ALERT, februarie–iulie 2026](https://mariuscomper.uk/ro-alert/) — analiza lui Marius Comper pe aceleași date IGSU.
 
+## Deploy
+
+`tools/deploy.sh` copies the files that the page loads (`index.html`, `css/`, `js/`, `vendor/`
+and the three data bundles) to a folder on this machine or on a host over SSH.
+
+1. Copy `.env.example` to `.env` and set `DEPLOY_PATH`. Set `DEPLOY_HOST` for a remote host.
+2. Run `tools/deploy.sh --dry-run` and read the file list.
+3. Run `tools/deploy.sh`.
+
+Use a second file for another target, for example `tools/deploy.sh --env .env.vps`.
+The script refuses to copy when a deployed file has uncommitted changes.
+`DEPLOY_DELETE=1` removes stale files inside `css/`, `js/` and `vendor/` only.
+A remote host needs `rsync` and SSH access.
+
 ## Tests
 
 The tests need no network. Run them from the repository root.
