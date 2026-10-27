@@ -4,11 +4,10 @@
 
 - [x] Smaller data bundle. Brief: `docs/briefs/data-size.md`. Done on branch `feat/data-size`:
   `geo.js` 1.35 MB -> 251 KB; `alerts.js` 7.20 MB -> 4.30 MB (gzip 493 KB -> 398 KB).
-- [ ] `alerts.js` is still above the 3.5 MB target (4.30 MB). Candidates, measured on the
-  current bundle: key `type` in `locations` items (about 179 KB), `deliveries[].sent_at` equal to
-  the alert `sent_at` (about 115 KB), `localities` derivable from `locations` (about 98 KB). They
-  change the shape that the front end reads; the owner decides. Lowest cost: split `msg_en` into
-  a lazy file.
+- [ ] Watch the size of `alerts.js`. Act when it passes 12 MB raw (owner, 2026-10-27); it is
+  4.30 MB now. Candidates, measured: `locations[].type` (about 179 KB), `deliveries[].sent_at`
+  equal to the alert `sent_at` (about 115 KB), `localities` derivable from `locations` (about
+  98 KB), or a lazy file for `msg_en`.
 - [ ] Localities from `Lista poligoane`, with a map layer. Brief: `docs/briefs/localities.md`.
 - [ ] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`.
 - [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
@@ -35,7 +34,6 @@
   the alert unit (`meta.months[].reports_errors`).
 - [ ] Deploy to lab.gov2.ro after a data pull request merges. The deploy location is not in
   this repo.
-- [ ] `data/alerts.js` is 7.2 MB with 3385 alerts and 3618 deliveries (measured 2026-10-27). Measure the page load time. Split per month if it is slow.
 
 ## Boilerplate phrase detection
 
