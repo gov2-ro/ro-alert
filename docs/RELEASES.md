@@ -1,5 +1,6 @@
 # Releases
 
+- v0.9.0 — 2026-10-27 — Audit phase 01, analytics correctness: risk categories from the structured source fields first, with whole-word text fallback (53 alerts reclassified); daily timeline in UTC calendar days (210 days, no lost alerts); failure rates only for the reporting sample (April: 1 / 237 alerts, 196 / 470 deliveries), with `meta.months[].error_reporting`. First persistent test suite (Python, Node, browser smoke).
 - v0.8.0 — 2026-10-27 — Project audit and implementation hand-off: six ordered briefs for analytics, pipeline reliability, shared state and places, mobile accessibility, visual architecture, and complete browsing. Named acceptance checks and implementation guidelines; no application changes.
 - v0.7.0 — 2026-10-27 — "Pe scurt" view (bear share, evening share, monthly change, bear and storm per month, top localities), timeline with official totals for summary-only months, Sources and method section.
 - v0.6.0 — 2026-10-27 — Compact data bundle (`alerts.js` 4.5 MB, 458 KB gzip; `geo.js` 251 KB). Localities from `Lista poligoane` via a Wikidata SIRUTA gazetteer (94.9% of mentions resolved), with a point layer on the map.
