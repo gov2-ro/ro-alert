@@ -41,15 +41,14 @@
 
   <!-- ===== SIDEBAR + MAIN ===== -->
   <div class="layout" id="layout">
-    <aside class="sidebar" id="sidebar" aria-labelledby="filters-title" tabindex="-1">
+    <aside class="sidebar" id="sidebar" data-mode="briefing" aria-labelledby="filters-title" tabindex="-1">
       <div class="drawer-head">
         <h2 id="filters-title" tabindex="-1" data-i18n="filters_title">Filtre</h2>
         <button type="button" id="filters-close" class="icon-btn" aria-label="Închide filtrele" data-i18n-label="filters_close"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="sidebar-body" id="sidebar-body">
-        <div class="sidebar-tabs" id="sidebar-tabs">
-          <button type="button" class="stab active" data-mode="briefing" aria-pressed="true" data-i18n="sidebar_briefing">Briefing</button>
-          <button type="button" class="stab" data-mode="console" aria-pressed="false" data-i18n="sidebar_console">Consolă</button>
+        <div class="sidebar-mode" id="sidebar-mode">
+          <button type="button" class="mode-link" id="mode-toggle" aria-controls="facets">→ Mai multe filtre</button>
         </div>
         <div class="search-wrap">
           <input type="search" id="search" aria-label="Caută în mesaje" data-i18n-label="search_label" data-i18n-ph="search_ph" placeholder="Caută în mesaje…" autocomplete="off">

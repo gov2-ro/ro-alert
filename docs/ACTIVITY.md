@@ -1,5 +1,26 @@
 # Activity
 
+## 2026-10-28 — Briefing sidebar and text navigation (owner request)
+
+**Done**
+- Briefing (default) shows only "Categorie de risc", with every category and no inner scroll.
+  Search, dates, Status difuzare, "Resetează filtrele" and the counts note show only in Console.
+  `status_trimitere` is no longer a Briefing facet.
+- The Briefing/Consolă buttons are one text link: "→ Mai multe filtre" in Briefing and
+  "← Categorii de risc" in Console (EN: "→ More filters", "← Risk categories"). The link keeps
+  focus and sets `aria-expanded`. `#sidebar[data-mode]` drives the CSS.
+- The top navigation uses text links: the current view is accent, bold and underlined.
+- Tests: `console-mode.cjs` follows the link; S03 switches back to Briefing by the link; new default
+  checks cover the Briefing content and both link directions.
+
+**Measured**
+- Browser suite: 499 PASS, 0 FAIL (one run failed U09 because the nav lost its colour transition;
+  restored). Node pass.
+
+**Decided**
+- Filters set in Console stay active in Briefing. The active-filter strip shows them and removes them.
+  Clearing them on mode change would lose a selection without a visible action.
+
 ## 2026-10-28 — Footer, view order, Briefing default (owner request)
 
 **Done**

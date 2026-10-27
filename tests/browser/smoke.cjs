@@ -72,16 +72,24 @@ async function view(page, name) {
     const d = await page.evaluate(() => ({
       tabs: [...document.querySelectorAll("#view-tabs .view-tab")].map((b) => b.dataset.view),
       current: document.querySelector('#view-tabs [aria-current="page"]')?.dataset.view,
-      modes: [...document.querySelectorAll(".stab")].map((b) => b.dataset.mode + ":" + b.getAttribute("aria-pressed")),
-      judetHidden: getComputedStyle(document.querySelector('#facets .facet[data-facet-field="judet"]')).display === "none",
+      mode: document.getElementById("sidebar").dataset.mode,
+      link: document.getElementById("mode-toggle").textContent,
+      shown: [...document.querySelectorAll("#sidebar-body > *, #facets .facet")].filter((e) => getComputedStyle(e).display !== "none" && e.offsetParent !== null).map((e) => e.id || e.className + (e.dataset.facetField ? ":" + e.dataset.facetField : "")),
       footer: document.getElementById("site-footer").innerText,
       gh: document.querySelector('#site-footer a[href="https://github.com/gov2-ro/ro-alert"]')?.getAttribute("aria-label"),
       see: !!document.querySelector('#site-footer a[href="https://mariuscomper.uk/ro-alert/"]'),
     }));
     check("defaults: views ordered Dashboard, Pe scurt, Tabel, Feed, Local; Dashboard is open",
       d.tabs.join() === "dashboard,story,table,feed,location" && d.current === "dashboard", JSON.stringify(d.tabs));
-    check("defaults: Briefing is the first sidebar mode and is active; Console-only facets are hidden",
-      d.modes.join() === "briefing:true,console:false" && d.judetHidden, JSON.stringify(d.modes));
+    const facetsShown = d.shown.filter((s) => s.startsWith("facet") && s.includes(":"));
+    check("defaults: Briefing shows only the risk categories and the 'Mai multe filtre' link",
+      d.mode === "briefing" && /Mai multe filtre/.test(d.link) && facetsShown.join() === "facet:risk_category"
+        && !d.shown.some((s) => /search-wrap|date-range|filter-actions|facet-note/.test(s)), JSON.stringify(d.shown));
+    await page.click("#mode-toggle");
+    const c = await page.evaluate(() => ({ mode: document.getElementById("sidebar").dataset.mode, link: document.getElementById("mode-toggle").textContent,
+      search: getComputedStyle(document.querySelector(".search-wrap")).display !== "none" }));
+    check("defaults: the link switches to Console, which shows search and the 'Categorii de risc' link back",
+      c.mode === "console" && /Categorii de risc/.test(c.link) && c.search, JSON.stringify(c));
     check("defaults: footer has no Proof of Concept, has the GitHub icon link and the see-also link",
       !/proof of concept/i.test(d.footer) && !!d.gh && d.see && /Vezi și/.test(d.footer), JSON.stringify(d));
     await ctx.close();

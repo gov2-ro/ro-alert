@@ -92,7 +92,7 @@ module.exports = async function run({ browser, check, URL, SHOTS }) {
     {
       const { ctx, page, errors } = await openAt("schema=1&f.meteo_color=Portocaliu&f.meteo_color=Ro%C8%99u", { lang });
       const before = await count(page);
-      await page.click('.stab[data-mode="briefing"]');
+      if ((await page.getAttribute("#sidebar", "data-mode")) !== "briefing") await page.click("#mode-toggle");
       const vis = await page.evaluate(() => {
         const f = document.querySelector('.facet[data-facet-field="meteo_color"]');
         return { hidden: getComputedStyle(f).display === "none", n: currentRows.length, chips: document.querySelectorAll("#active-strip .strip-chip").length,

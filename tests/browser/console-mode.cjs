@@ -1,14 +1,14 @@
-/* The page opens with the "Briefing" sidebar, which hides the Console-only facets.
-   Most suites exercise those facets, so they switch to "Consolă" after every load,
+/* The page opens with the "Briefing" sidebar, which shows only the risk categories.
+   Most suites exercise search, dates and other facets, so they follow "Mai multe filtre" after every load,
    as a user would. The default itself is checked in smoke.cjs without this helper. */
 async function useConsole(ctx) {
   await ctx.addInitScript(() => {
     const obs = new MutationObserver(() => {
       if (!document.querySelector("#facets .facet")) return; // buildSidebar has wired the tabs
-      const tab = document.querySelector('.stab[data-mode="console"]');
-      if (!tab) return;
+      const link = document.getElementById("mode-toggle");
+      if (!link) return;
       obs.disconnect();
-      if (tab.getAttribute("aria-pressed") !== "true") tab.click();
+      if (document.getElementById("sidebar").dataset.mode !== "console") link.click();
     });
     document.addEventListener("DOMContentLoaded", () => obs.observe(document.body, { childList: true, subtree: true }));
   });

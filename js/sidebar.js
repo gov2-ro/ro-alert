@@ -94,24 +94,29 @@ function syncSidebar() {
   const max = DATA.meta.date_max ? DATA.meta.date_max.slice(0, 10) : "";
   if (df) df.value = state.dateFrom || min;
   if (dt) dt.value = state.dateTo || max;
-  document.querySelectorAll(".stab").forEach((b) => {
-    b.classList.toggle("active", b.dataset.mode === sidebarMode);
-    b.setAttribute("aria-pressed", String(b.dataset.mode === sidebarMode));
-  });
   updateSidebarVisibility();
 }
 
+/* One text link switches the mode. Briefing shows only the risk categories;
+   Console adds search, dates and every other facet. */
 function wireSidebarTabs() {
-  document.querySelectorAll(".stab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      sidebarMode = btn.dataset.mode;
-      document.querySelectorAll(".stab").forEach((b) => { b.classList.toggle("active", b === btn); b.setAttribute("aria-pressed", String(b === btn)); });
-      updateSidebarVisibility();
-    });
+  const btn = document.getElementById("mode-toggle");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    sidebarMode = sidebarMode === "briefing" ? "console" : "briefing";
+    updateSidebarVisibility();
   });
 }
 
 function updateSidebarVisibility() {
+  const sb = document.getElementById("sidebar");
+  if (sb) sb.dataset.mode = sidebarMode;
+  const btn = document.getElementById("mode-toggle");
+  if (btn) {
+    const text = t(sidebarMode === "briefing" ? "sidebar_more" : "sidebar_less");
+    if (btn.textContent !== text) btn.textContent = text;
+    btn.setAttribute("aria-expanded", String(sidebarMode === "console"));
+  }
   document.querySelectorAll(".facet").forEach((f) => {
     if (sidebarMode === "briefing" && f.dataset.briefing === "0") {
       f.style.display = "none";

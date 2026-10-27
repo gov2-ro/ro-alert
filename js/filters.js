@@ -6,7 +6,7 @@
    `label` an i18n key, `open` the initial expansion, `briefing` whether Briefing mode shows it. */
 const FACET_REGISTRY = [
   { field: "risk_category", meta: "risk_category", label: "facet_risk_category", open: true, briefing: true },
-  { field: "status_trimitere", meta: "status_trimitere", label: "facet_status_trimitere", open: true, briefing: true },
+  { field: "status_trimitere", meta: "status_trimitere", label: "facet_status_trimitere", open: true, briefing: false },
   { field: "judet", meta: "judet", label: "facet_judet", open: false, briefing: false },
   { field: "severitate", meta: "severitate", label: "facet_severitate", open: false, briefing: false },
   { field: "tip_mesaj", meta: "tip_mesaj", label: "facet_tip_mesaj", open: false, briefing: false },

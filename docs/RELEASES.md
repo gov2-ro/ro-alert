@@ -1,5 +1,6 @@
 # Releases
 
+- v0.17.0 — 2026-10-28 — Briefing sidebar shows only the risk categories; one text link switches to all filters and back; text-link top navigation.
 - v0.16.0 — 2026-10-28 — Dashboard first in the top navigation; "Briefing" is the default sidebar mode; footer without "Proof of Concept", with a GitHub link and a "Vezi și" link to Marius Comper's analysis.
 - v0.15.1 — 2026-10-28 — Deploy script: `~/` in `DEPLOY_PATH` refers to the target's home folder; `.env` is read as plain text, not run as shell code.
 - v0.15.0 — 2026-10-27 — Audit phase 06, browsing and rendering: 50-record pages in Table, Feed and Local with page in the URL; JSON export of the full selection with sources and coverage; map and charts kept across filter and language changes, with a Fit selection button; loading text and a readable load-error screen with Retry. Feed DOM 48,220 → 767 elements. Completes the audit follow-up (phases 01–06).
