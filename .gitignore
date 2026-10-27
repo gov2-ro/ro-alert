@@ -5,3 +5,5 @@ data/*
 _obsolete/*
 repository/arhiva-ro-alert/*
 repository/ui-screenshots/*
+.venv/
+__pycache__/
