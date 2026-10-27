@@ -2,9 +2,11 @@
 
 ## Ingest
 
-- [ ] Count alerts, not delivery rows (April has one row per channel and retry; 470 rows
-  are 237 alerts, 1 failed). Brief: `docs/briefs/alert-unit.md`. This replaces the
-  failure-rate UI item below.
+- [x] Count alerts, not delivery rows (April has one row per channel and retry; 470 rows
+  are 237 alerts, 1 failed). Done on branch `feat/alert-unit`; brief `docs/briefs/alert-unit.md`.
+  Measured: 3385 alerts, 3618 deliveries, 1 failed alert.
+- [x] UI: the failure rate of 1 in 237 alerts shows as "0%" (whole-number rounding). Show one
+  decimal below 10%, or the count.
 - [ ] Monthly timeline: add the official totals of the summary-only months (2025-09 286,
   2025-10 146, 2025-12 96, 2026-01 61), marked as official summary.
 - [ ] Location resolution: resolve from `Lista poligoane` first. Target from
@@ -13,18 +15,14 @@
 - [~] Automatic ingest from data.gov.ro (CKAN API → `sources/YYYY-MM.csv` → build), with a
   daily GitHub Action that opens a pull request. Brief: `docs/briefs/ckan-ingest.md`.
   Built on branch `feat/ckan-ingest`; waits for the owner's decision on the next item.
-- [ ] **Defect: dedup by `id` removes 214 valid April rows.** The hash of `title|sent_at|msg`
-  is equal for the two delivery rows of one April message (channel `CBC CMAS` and channel
-  `STS`). The build gives 3404 alerts, not 3618, and April shows 256 rows, not 470. Brief
-  decision needed: add `Tip inregistrare` to the hash key (leaves 1 duplicate in April), or
-  keep one alert per delivery row with a row-based tie-break. See `docs/ACTIVITY.md`.
+- [x] **Defect: dedup by `id` removed 214 valid April rows.** Closed by the alert unit: April
+  alerts group by title + `Data creare` + `Tip mesaj`; all 3618 rows are deliveries.
 - [ ] Find the cause of the August Grand Total mismatch (557 rows, total 556).
-- [ ] UI: show that the failure rate exists only for months that report ERROR rows. Only
-  April 2026 reports them (measured 2026-10-27). Blocked by the ingest.
+- [x] UI: show that delivery failures exist only for months that report ERROR rows. Done with
+  the alert unit (`meta.months[].reports_errors`).
 - [ ] Deploy to lab.gov2.ro after a data pull request merges. The deploy location is not in
   this repo.
-- [ ] `data/alerts.js` is 6.8 MB with 3404 alerts (measured 2026-10-27; 3618 alerts without
-  the dedup defect would be about 7.2 MB). Measure the page load time. Split per month if it is slow.
+- [ ] `data/alerts.js` is 7.2 MB with 3385 alerts and 3618 deliveries (measured 2026-10-27). Measure the page load time. Split per month if it is slow.
 
 ## Boilerplate phrase detection
 

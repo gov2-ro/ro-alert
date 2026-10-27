@@ -253,6 +253,8 @@ function openDrawer(id) {
         ${a.poligoane ? `<h3>${t("detail_polygons")}</h3><div>${a.poligoane.split(",").map((p) => `<span class="pill">${esc(p.trim())}</span>`).join("")}</div>` : ""}
       </div>
       <div class="drawer-col">
+        ${a.deliveries && a.deliveries.length ? `<h3>${t("detail_deliveries")} (${a.deliveries.length})</h3>
+        <table class="del-table"><thead><tr><th>${t("del_channel")}</th><th>${t("del_status")}</th><th>${t("del_time")}</th></tr></thead><tbody>${a.deliveries.map((d) => `<tr><td>${esc((d.channel || "—").replace(/^trimitere alerta pe canalul\s+/i, ""))}</td><td><span class="badge ${d.status === "ERROR" ? "error" : "sent"}">${esc(d.status || "—")}</span></td><td>${fmtTime(d.sent_at)}</td></tr>`).join("")}</tbody></table>` : ""}
         <h3>${t("detail_meta")}</h3>
         <div class="meta-grid">${metaRows.map(([k, v]) => `<div class="mk">${t(k)}</div><div>${esc(v)}</div>`).join("")}</div>
       </div>

@@ -1,5 +1,50 @@
 # Activity
 
+## 2026-10-27 — Alert unit: count alerts, not delivery rows (branch `feat/alert-unit`)
+
+**Done**
+- `build_data.py`: rows with a `Data creare` value group by file + title + `Data creare` +
+  `Tip mesaj`. Other rows stay one alert per row, with the old id. The grouped id is a hash of
+  title, `Data creare`, `Tip mesaj`. Each alert has `deliveries` (`channel`, `status`,
+  `sent_at`, `audienta`), one per CSV row. `status_ok` is true when one delivery is SENT.
+  `sent_at`, `status_trimitere` and the other fields come from the first SENT row, else the first row.
+- `meta.json`: new `deliveries`, `delivery_error`, and `months` (per month: `alerts`,
+  `deliveries`, `delivery_errors`, `reports_errors` from the manifest).
+- Front end: the failure KPI counts failed alerts. A "Failed deliveries" figure with a note
+  shows in the dashboard, the location KPIs and the sidebar stats, only when the selection holds
+  a month with `reports_errors`. The drawer lists the deliveries (channel, status, time).
+  Labels `kpi_error` and `kpi_failed` now say "Failed alerts". Removed the "STS" text in the
+  feed sidebar (it assumed a 25% failure rate). `index.html` description: 3385 alerts.
+
+**Measured** (offline run of `build_data.py` on `sources/*.csv`)
+- Alerts 3385 (was 3618): Feb 76, Mar 102, Apr 237, May 618, Jun 1185, Jul 610, Aug 557.
+  Deliveries 3618 (sum of `len(deliveries)`); ERROR deliveries 196.
+- `sent=3384 error=1 cancel=21` (was 3422/196/41). April: 216 ALERT + 21 CANCEL, 1 alert with
+  `status_ok=false` (ISU ARGES - URS, Bradulet / 26.04.2026: CBC CMAS and STS both ERROR).
+- Months other than April: 3148 alerts, same ids, 0 field differences except the new `deliveries`.
+- Only April has `Data creare`, so grouping changes April only.
+- April channels: CBC CMAS 248 rows, STS 222. Delivery failure rate April: 196 of 470 (42%).
+  Failed-alert rate: 1 of 237 (0.4%, the UI shows 0%).
+- `data/alerts.js`: 7,200,209 bytes (was 7,241,558).
+- Headless Chrome from `file://`: 0 JS errors; KPIs, sidebar, table, feed, drawer render in RO
+  and EN. Delivery KPI is absent when the date filter covers May onwards, and present for all
+  and for April.
+
+**Hard**
+- In 6 of 237 April groups the rows differ in message text or risk (a revised message in the
+  Barbaroșie Sebastian Andrei alert; ERROR rows with a different `Risc principal` in 4
+  alerts). The alert takes the SENT row, so the SENT row decides the risk category.
+- `Tip inregistrare` holds the channel as "trimitere alerta pe canalul CBC CMAS". The data keeps
+  the raw string; the drawer removes the prefix.
+
+**Decided**
+- Representative row = first SENT, else first row (brief). Cost of the alternative (first
+  row): the failed STS row would set the risk category for 4 alerts.
+- `reports_errors` in `meta.months` comes from the manifest; the fallback is "has an ERROR
+  delivery". The delivery rate uses only the deliveries of months that report errors.
+- Assumed, not measured: the failure rate at 0.4% shows as "0%" (whole-number rounding). The
+  display was not changed; see BACKLOG.
+
 ## 2026-10-27 — Review of the ingest; alert unit; related work
 
 **Done**

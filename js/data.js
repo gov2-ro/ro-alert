@@ -33,3 +33,42 @@ async function loadData() {
   DATA.geo = geo;
   return DATA;
 }
+
+/* Delivery figures for a selection of alerts. An alert is one message; a delivery is one
+   channel or retry row of it. Only months with `reports_errors` in META.months report
+   ERROR deliveries, so the figures cover those months only.
+   Returns null when the selection holds no such month. */
+function deliveryStats(rows) {
+  const months = (DATA.meta && DATA.meta.months) || [];
+  const reporting = new Set(months.filter((m) => m.reports_errors).map((m) => m.label));
+  let total = 0, failed = 0, n = 0;
+  for (const a of rows) {
+    if (!reporting.has(a.month)) continue;
+    n++;
+    for (const d of a.deliveries || []) {
+      total++;
+      if (d.status === "ERROR") failed++;
+    }
+  }
+  if (!n) return null;
+  return { total, failed, rate: pctRate(failed, total) };
+}
+
+/* Percentage of part in total, as a number (0..100). */
+function pctRate(part, total) {
+  return total ? (part / total) * 100 : 0;
+}
+
+/* Display form of a percentage: "<0.1" for small non-zero values, one decimal below 10,
+   whole numbers above. So 1 failed alert of 3385 does not read "0%". */
+function fmtPct(r) {
+  if (r > 0 && r < 0.1) return "<0.1";
+  return r < 10 ? String(Math.round(r * 10) / 10) : String(Math.round(r));
+}
+
+/* KPI card for delivery failures; empty string when the selection has no reporting month. */
+function deliveryKpiHtml(rows) {
+  const ds = deliveryStats(rows);
+  if (!ds) return "";
+  return `<div class="kpi"><div class="v">${ds.failed}</div><div class="k">${t("kpi_delivery_failed")}</div><div class="sub">${fmtPct(ds.rate)}% ${t("of_deliveries")} · ${t("delivery_note")}</div></div>`;
+}
