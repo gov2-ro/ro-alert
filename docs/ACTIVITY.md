@@ -1,5 +1,32 @@
 # Activity
 
+## 2026-10-27 — Timeline with official totals and "Pe scurt" view (branch `feat/story-view`)
+
+**Done**
+- `build_data.py`: `meta.months` now holds the four summary-only months (2025-09 286, 2025-10 146, 2025-12 96, 2026-01 61) with `official: true` and `by_risk`. `meta.sources` and `meta.last_modified` come from the manifest. `alerts.js` is unchanged; `meta.js` only grew.
+- `js/story.js`: new first tab "Pe scurt": bear share, evening share, failed alerts, alerts per month with change, bear and storm per month, hour chart, top 10 localities with main risk, delivery-failure note, and a Sources and method section (dataset links, CC BY 4.0, last update, mariuscomper.uk as related work). RO and EN text in `i18n.js`.
+- The monthly chart has 12 slots from 2025-09 to 2026-08: 11 bars (4 hatched "rezumat oficial") and a labelled gap for 2025-11.
+
+**Measured** (browser `storyStats` against `$scratch/check.py` on `data/alerts.json`; all equal)
+
+| Selection | Alerts | Bear (regex) | Share | Sent 20-23 | Failed alerts | Deliveries failed |
+|---|---|---|---|---|---|---|
+| Feb-Jul 2026 (date filter) | 2,828 | 1,963 | 69.413% | 999 (35.3253%) | 1 | 196 of 470 |
+| judet Harghita, no date filter | 418 | 404 | 96.651% | 198 (47.368%) | 0 | 30 of 60 |
+| Feb-Jul and Harghita | 367 | 354 | 96.4578% | 166 (45.2316%) | 0 | 30 of 60 |
+| All, no filter | 3,385 | 2,333 | 68.9217% | 1,232 (36.3959%) | 1 | 196 of 470 |
+
+Change vs previous month (all): 2026-01 -36%, 02 +25%, 03 +34%, 04 +132%, 05 +161%, 06 +92%, 07 -49%, 08 -9%. 0 JS errors from `file://`.
+
+**Decided**
+- Official months show only with no filter. They have no alerts, so a filter cannot apply to them. Alternative: show them under every filter; that would mix filtered and unfiltered figures on one axis.
+- Bear in official months is the category "Animale periculoase", not the word "urs" (no text exists). The caption says so. Storm is risc asociat "Furtuni" in both.
+- "Last ingest" is the latest `last_modified` in the manifest (2026-10-23). The manifest has no download date.
+- Dashboard stays the landing tab; "Pe scurt" is the first tab only in order.
+
+**Hard**
+- "No filter" for Feb-Jul needs a date filter, which also hides the official months. The check used the date window; the all-data row has no filter.
+
 ## 2026-10-27 — Localities from `Lista poligoane` (branch `feat/localities`)
 
 **Done**

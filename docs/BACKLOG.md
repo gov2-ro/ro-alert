@@ -14,7 +14,7 @@
 - [ ] Map: at national zoom, 1,373 points hide the county colours. Scale the radius with the
   zoom, or add a toggle between counties and points.
 - [ ] Localities: 131 mentions are ambiguous (two places with the same name in one county). Decide whether to pick the larger place or the one nearest to the alert centroid.
-- [ ] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`.
+- [x] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`. Done on branch `feat/story-view`.
 - [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
   runs timed out on connect, 2026-10-27). Needs the VPS details from the owner.
 - [ ] Deploy script for lab.gov2.ro (Apache on 67.205.1.122). A daily cron job on the VPS
@@ -29,7 +29,7 @@
   Measured: 3385 alerts, 3618 deliveries, 1 failed alert.
 - [x] UI: the failure rate of 1 in 237 alerts shows as "0%" (whole-number rounding). Show one
   decimal below 10%, or the count.
-- [ ] Monthly timeline: add the official totals of the summary-only months (2025-09 286,
+- [x] Monthly timeline: add the official totals of the summary-only months (2025-09 286,
   2025-10 146, 2025-12 96, 2026-01 61), marked as official summary.
 - [ ] Location resolution: resolve from `Lista poligoane` first. Target from
   mariuscomper.uk: 94.8% of bear-alert locality mentions resolved without ambiguity.
@@ -39,6 +39,7 @@
   Built on branch `feat/ckan-ingest`; waits for the owner's decision on the next item.
 - [x] **Defect: dedup by `id` removed 214 valid April rows.** Closed by the alert unit: April
   alerts group by title + `Data creare` + `Tip mesaj`; all 3618 rows are deliveries.
+- [ ] Story view: decide whether "Pe scurt" is the landing tab (now Dashboard is). Official months show only with no filter; decide if a county filter should show the national totals greyed.
 - [ ] Find the cause of the August Grand Total mismatch (557 rows, total 556).
 - [x] UI: show that delivery failures exist only for months that report ERROR rows. Done with
   the alert unit (`meta.months[].reports_errors`).
