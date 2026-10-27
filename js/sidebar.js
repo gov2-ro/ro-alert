@@ -108,7 +108,7 @@ function renderSidebarStats(rows) {
     <div class="sidebar-stat"><div class="sv">${total}</div><div class="sk">${t("kpi_total")}</div></div>
     <div class="sidebar-stat ok"><div class="sv">${sent}</div><div class="sk">${t("kpi_sent")}</div></div>
     <div class="sidebar-stat err"><div class="sv">${err}</div><div class="sk">${t("kpi_error")}</div></div>
-    <div class="sidebar-stat ${rate >= 25 ? "err" : ""}"><div class="sv">${rate}%</div><div class="sk">${t("kpi_error_rate")}</div></div>
+    <div class="sidebar-stat ${rate >= 25 ? "err" : ""}"><div class="sv">${fmtPct(rate)}%</div><div class="sk">${t("kpi_error_rate")}</div></div>
     ${(() => { const ds = deliveryStats(rows); return ds ? `<div class="sidebar-stat"><div class="sv">${ds.failed}</div><div class="sk">${t("kpi_delivery_failed")}</div></div>` : ""; })()}
   `;
 }

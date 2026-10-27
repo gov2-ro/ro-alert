@@ -64,7 +64,7 @@ function renderDashboardKpis(rows) {
     <div class="kpi"><div class="v">${total}</div><div class="k">${t("kpi_total")}</div></div>
     <div class="kpi accent"><div class="v">${bear || topCat ? (topCat ? topCat[1] : 0) : 0}</div><div class="k">${t("kpi_toprisk")}</div><div class="sub">${topCat ? topCat[0] : "—"}</div></div>
     <div class="kpi err"><div class="v">${err}</div><div class="k">${t("kpi_failed")}</div></div>
-    <div class="kpi ${rate >= 25 ? "err" : "ok"}"><div class="v">${rate}%</div><div class="k">${t("kpi_error_rate")}</div></div>
+    <div class="kpi ${rate >= 25 ? "err" : "ok"}"><div class="v">${fmtPct(rate)}%</div><div class="k">${t("kpi_error_rate")}</div></div>
     <div class="kpi"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>
     ${deliveryKpiHtml(rows)}
   `;

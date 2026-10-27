@@ -54,16 +54,21 @@ function deliveryStats(rows) {
   return { total, failed, rate: pctRate(failed, total) };
 }
 
-/* Percentage for display: one decimal below 10%, so that 1 of 3385 does not read "0%". */
+/* Percentage of part in total, as a number (0..100). */
 function pctRate(part, total) {
-  if (!total) return 0;
-  const r = (part / total) * 100;
-  return r < 10 ? Math.round(r * 10) / 10 : Math.round(r);
+  return total ? (part / total) * 100 : 0;
+}
+
+/* Display form of a percentage: "<0.1" for small non-zero values, one decimal below 10,
+   whole numbers above. So 1 failed alert of 3385 does not read "0%". */
+function fmtPct(r) {
+  if (r > 0 && r < 0.1) return "<0.1";
+  return r < 10 ? String(Math.round(r * 10) / 10) : String(Math.round(r));
 }
 
 /* KPI card for delivery failures; empty string when the selection has no reporting month. */
 function deliveryKpiHtml(rows) {
   const ds = deliveryStats(rows);
   if (!ds) return "";
-  return `<div class="kpi"><div class="v">${ds.failed}</div><div class="k">${t("kpi_delivery_failed")}</div><div class="sub">${ds.rate}% ${t("of_deliveries")} · ${t("delivery_note")}</div></div>`;
+  return `<div class="kpi"><div class="v">${ds.failed}</div><div class="k">${t("kpi_delivery_failed")}</div><div class="sub">${fmtPct(ds.rate)}% ${t("of_deliveries")} · ${t("delivery_note")}</div></div>`;
 }
