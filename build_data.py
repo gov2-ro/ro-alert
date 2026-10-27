@@ -74,28 +74,94 @@ def judet_for(initiator, title=None):
 
 
 # --- coarse risk category (primary sidebar facet) ----------------------------
+# Bear words, on text without diacritics and in lower case. The place resolver
+# (`is_bear` in main) and the risk fallback below both use this one rule.
+# It matches a whole word only, so `sursele`, `hours` and `watercourses` do not match.
+BEAR_RE = re.compile(r"\burs(?:ul|ului|ule|i|ii|ilor|oaic\w*)?\b")
+BEAR_EN_RE = re.compile(r"\bbears?\b")
+
+
+def has_bear_word(text):
+    """True when the text holds a Romanian or English bear word."""
+    t = _norm_text(text)
+    return bool(BEAR_RE.search(t) or BEAR_EN_RE.search(t))
+
+
+def _norm_text(s):
+    """Lower case, no diacritics, no non-breaking spaces, single spaces. For comparison only."""
+    return " ".join(_ascii(s).split())
+
+
+# Rule table, in order. The first match wins. A structured field (Risc asociat,
+# then Risc principal) decides before the free text. Values are compared after
+# `_norm_text`.
+#
+#   rule id            field     match                              category
+#   asociat:animale    asociat   "animale periculoase"              Animale periculoase
+#   asociat:copii      asociat   "copii disparuti"                  Copil dispărut
+#   asociat:aerian     asociat   "atac aerian"                      Atac aerian / dronă
+#   asociat:inundatii  asociat   "inundatii"                        Inundații
+#   asociat:meteo      asociat   "furtuni", "viscol",               Meteo
+#                                "caderi masive de zapada"
+#   principal:incendii principal contains "incendi"                 Incendiu
+#   principal:tehnolog principal contains "tehnolog" or "poluar"    Tehnologic
+#   principal:meteo    principal contains "meteo"                   Meteo
+#   principal:securit. principal contains "securitat" + "national"  Securitate națională
+#   text:bear          message   bear word (Romanian or English)    Animale periculoase
+#   text:child         message   "copil disparut", "copii            Copil dispărut
+#                                disparuti", "missing child"
+#   text:air           message   "atac aerian", "spatiul aerian",   Atac aerian / dronă
+#                                "air raid", "air attack", "drone"
+#   text:flood         message   "inundatie", "inundatii", "flood"  Inundații
+#   text:fire          message   "incendiu", "incendii", "fire"     Incendiu
+#   none               -         -                                  Altele
+#
+# Text rules apply only when no structured rule matched. A storm alert whose
+# advice mentions an animal stays Meteo.
+_ASOCIAT_RULES = (
+    ("asociat:animale", ("animale periculoase",), "Animale periculoase"),
+    ("asociat:copii", ("copii disparuti",), "Copil dispărut"),
+    ("asociat:aerian", ("atac aerian",), "Atac aerian / dronă"),
+    ("asociat:inundatii", ("inundatii",), "Inundații"),
+    ("asociat:meteo", ("furtuni", "viscol", "caderi masive de zapada"), "Meteo"),
+)
+_CHILD_RE = re.compile(r"\b(?:copil disparut|copii disparuti|missing child(?:ren)?)\b")
+_AIR_RE = re.compile(r"\b(?:atac aerian|spatiul aerian|air raid|air attack|drona|drone|dronei|dronelor|drones)\b")
+_FLOOD_RE = re.compile(r"\b(?:inundati[ae]|inundatii|floods?|flooding)\b")
+_FIRE_RE = re.compile(r"\b(?:incendiu|incendii|fires?|wildfires?)\b")
+
+
+def classify_risk(principal, asociat, msg):
+    """Return (category, rule id) for one alert. See the rule table above."""
+    p = _norm_text(principal)
+    a = _norm_text(asociat)
+    for rule, values, cat in _ASOCIAT_RULES:
+        if a in values:
+            return cat, rule
+    if "incendi" in p:
+        return "Incendiu", "principal:incendii"
+    if "tehnolog" in p or "poluar" in p:
+        return "Tehnologic", "principal:tehnologic"
+    if "meteo" in p:
+        return "Meteo", "principal:meteo"
+    if "securitat" in p and "national" in p:
+        return "Securitate națională", "principal:securitate"
+    text = _norm_text(msg)
+    if has_bear_word(text):
+        return "Animale periculoase", "text:bear"
+    if _CHILD_RE.search(text):
+        return "Copil dispărut", "text:child"
+    if _AIR_RE.search(text):
+        return "Atac aerian / dronă", "text:air"
+    if _FLOOD_RE.search(text):
+        return "Inundații", "text:flood"
+    if _FIRE_RE.search(text):
+        return "Incendiu", "text:fire"
+    return "Altele", "none"
+
+
 def risk_category(principal, asociat, msg):
-    p = (principal or "").lower()
-    a = (asociat or "").lower()
-    text = f"{p} {a} {(msg or '').lower()}"
-    if "animale" in a or "urs" in text or "bear" in text:
-        return "Animale periculoase"
-    if "copii disparuti" in a or "copil" in text or "child" in text:
-        return "Copil dispărut"
-    if "atac aerian" in a or "aerian" in text or "air" in a:
-        return "Atac aerian / dronă"
-    if "inundat" in text:
-        return "Inundații"
-    if "incendi" in p or "incendi" in a or "fire" in text:
-        return "Incendiu"
-    if "meteo" in p or any(w in a for w in ("furtun", "viscol", "vant", "zapada",
-                                            "ninsoa", "ploi", "vijelii")):
-        return "Meteo"
-    if "tehnolog" in p or "polua" in p or "polua" in a:
-        return "Tehnologic"
-    if "securitati nationale" in p or "securitatii nationale" in p:
-        return "Securitate națională"
-    return "Altele"
+    return classify_risk(principal, asociat, msg)[0]
 
 
 METEO_COLOR_RE = re.compile(r"\b(galben|portocaliu|ro[șs]u|verde)\b", re.IGNORECASE)
@@ -368,7 +434,6 @@ COUNTY_GROUP = {"bucuresti": {"bucuresti", "ilfov"}, "bucuresti ilfov": {"bucure
 LOCALITY_TYPES = {"sat", "localitate componentă", "localitate"}
 SECTOR_RE = re.compile(r"^(?:BUCURESTI )?SECTORUL? (\d)$")
 BEAR_MONTHS = {"2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"}
-BEAR_RE = re.compile(r"\burs(?:ul|ului|ule|i|ii|ilor|oaic\w*)?\b")
 
 
 def name_key(s):
@@ -628,6 +693,7 @@ def main():
     place_counts = collections.Counter()          # all alerts
     bear_counts = collections.Counter()           # bear alerts, February-July
     unresolved = collections.Counter()            # (status, name, judet) -> mentions
+    risk_rules = []                               # (id, category, rule, principal, asociat)
     alerts = []
     seen_ids = set()
     duplicates = 0
@@ -696,6 +762,8 @@ def main():
                 unresolved[(status, nm, judet, unresolved_reason(status, nm, judet, scope, gaz))] += 1
         place_counts["generic"] += n_generic
 
+        category, rule = classify_risk(principal, asociat, msg)
+        risk_rules.append((aid, category, rule, principal or "", asociat or ""))
         a = {
             "id": aid,
             "source_file": src_file or None,
@@ -706,7 +774,7 @@ def main():
             "scope": scope,
             "risc_principal": principal,
             "risc_asociat": asociat,
-            "risk_category": risk_category(principal, asociat, msg),
+            "risk_category": category,
             "meteo_color": meteo_color(title, msg),
             "status_trimitere": status_trim or None,
             "status_ok": status_ok,
@@ -778,6 +846,10 @@ def main():
             "deliveries": sum(len(a["deliveries"]) for a in ma),
             "delivery_errors": derr,
             "reports_errors": reports.get(key, derr > 0),
+            # observed: the source holds ERROR rows (completeness is not established).
+            # unknown: a detail source without ERROR rows. A missing ERROR row is no
+            # proof of full reporting.
+            "error_reporting": "observed" if derr > 0 else "unknown",
         })
 
     # Summary-only months (manifest shape S): official total and risk breakdown, no alerts.
@@ -792,6 +864,7 @@ def main():
             "alerts": m["grand_total"], "official": True,
             "by_risk": dict(by_risk),
             "deliveries": None, "delivery_errors": None, "reports_errors": False,
+            "error_reporting": "not_applicable",
         })
     months.sort(key=lambda x: x["key"])
 
@@ -853,6 +926,10 @@ def main():
         w.writerow(["status", "name", "judet", "reason", "mentions"])
         for (st, nm, jd, why), n in sorted(unresolved.items(), key=lambda kv: -kv[1]):
             w.writerow([st, nm, jd, why, n])
+    with open(os.path.join(OUT_DIR, "risk_rules.csv"), "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["id", "category", "rule", "risc_principal", "risc_asociat"])
+        w.writerows(sorted(risk_rules))
     with open(os.path.join(OUT_DIR, "alerts.json"), "w", encoding="utf-8") as f:
         json.dump(slim, f, ensure_ascii=False, separators=(",", ":"))
     with open(os.path.join(OUT_DIR, "meta.json"), "w", encoding="utf-8") as f:

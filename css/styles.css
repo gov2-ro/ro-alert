@@ -191,6 +191,8 @@ a { color: var(--accent); }
 .leaflet-container { background: #eae5da; outline: none; }
 .chart-box { position: relative; height: 220px; }
 .chart-box.tall { height: 280px; }
+.fail-text { font-size: 13px; line-height: 1.5; }
+.fail-text p { margin: 0 0 8px; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; font-size: 11px; color: var(--text-muted); }
 .legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }

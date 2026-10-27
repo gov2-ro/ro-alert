@@ -30,42 +30,25 @@ function countBy(arr, key) {
   return m;
 }
 
-/* ---- Stacked timeline: daily volume stacked by hazard category, with an
-   failed-alert line overlay. ---- */
+/* ---- Daily timeline: alerts per day stacked by hazard category, with a separate
+   failed-alert line. The Dashboard and the Local view both use it. Stats.dailyCounts
+   builds the axis: every day from the first to the last selected date, once each. The
+   failed line is a diagnostic; it is not part of the stack. Counts are discrete, so the
+   line has no smoothing. ---- */
 function renderStackedTimelineChart(canvasId, rows) {
-  // continuous day axis between the first and last alert
-  const dates = rows.map((a) => a.date).filter(Boolean).sort();
-  if (!dates.length) { upsert(canvasId, canvasId, { type: "bar", data: { labels: [], datasets: [] }, options: {} }); return; }
-  const labels = [];
-  for (let d = new Date(dates[0]); d <= new Date(dates[dates.length - 1]); d.setDate(d.getDate() + 1)) {
-    labels.push(d.toISOString().slice(0, 10));
-  }
-  const idx = Object.fromEntries(labels.map((d, i) => [d, i]));
-
-  // category order = global frequency (largest stacks at the bottom)
-  const catTotals = countBy(rows, "risk_category");
-  const cats = [...catTotals.entries()].sort((a, b) => b[1] - a[1]).map((e) => e[0]);
-  const series = Object.fromEntries(cats.map((c) => [c, new Array(labels.length).fill(0)]));
-  const errData = new Array(labels.length).fill(0);
-  for (const a of rows) {
-    const i = idx[a.date];
-    if (i == null) continue;
-    if (series[a.risk_category]) series[a.risk_category][i]++;
-    if (a.status_ok === false) errData[i]++;
-  }
-
-  const datasets = cats.map((c) => ({
-    label: c, data: series[c], backgroundColor: catColor(c), stack: "haz", borderWidth: 0, categoryPercentage: 0.9, barPercentage: 1,
+  const d = Stats.dailyCounts(rows);
+  const datasets = d.categories.map((c) => ({
+    label: c, data: d.series[c], backgroundColor: catColor(c), stack: "haz", borderWidth: 0, categoryPercentage: 0.9, barPercentage: 1,
   }));
   datasets.push({
-    label: t("kpi_error"), data: errData, type: "line",
+    label: t("kpi_failed"), data: d.failed, type: "line",
     borderColor: "#d93b3b", backgroundColor: "transparent", borderWidth: 1.5,
-    tension: .25, pointRadius: 0, order: 0,
+    tension: 0, pointRadius: 0, order: 0,
   });
 
   const cfg = {
     type: "bar",
-    data: { labels, datasets },
+    data: { labels: d.labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } }, tooltip: { itemSort: (a, b) => b.raw - a.raw } },
@@ -73,33 +56,6 @@ function renderStackedTimelineChart(canvasId, rows) {
         x: { stacked: true, ticks: { maxTicksLimit: 8 }, grid: { display: false } },
         y: { stacked: true, beginAtZero: true, grid: { color: "#e8e3d8" } },
       },
-    },
-  };
-  upsert(canvasId, canvasId, cfg);
-}
-
-/* ---- Timeline (line/area) ---- */
-function renderTimelineChart(canvasId, rows, opts = {}) {
-  const m = countBy(rows, "date");
-  const labels = [...m.keys()].sort();
-  const data = labels.map((d) => m.get(d));
-  const errM = new Map();
-  for (const a of rows) if (a.status_ok === false && a.date) errM.set(a.date, (errM.get(a.date) || 0) + 1);
-  const errData = labels.map((d) => errM.get(d) || 0);
-
-  const cfg = {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        { label: t("kpi_total"), data, borderColor: "#2a6fc4", backgroundColor: "rgba(42,111,196,.12)", fill: true, tension: .25, pointRadius: 0, borderWidth: 2 },
-        { label: t("kpi_error"), data: errData, borderColor: "#d93b3b", backgroundColor: "transparent", tension: .25, pointRadius: 0, borderWidth: 1.5 },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 11 } } } },
-      scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#e8e3d8" } } },
     },
   };
   upsert(canvasId, canvasId, cfg);
@@ -119,27 +75,6 @@ function renderHazardChart(canvasId, rows) {
       indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: { x: { beginAtZero: true, grid: { color: "#e8e3d8" } }, y: { grid: { display: false } } },
-    },
-  };
-  upsert(canvasId, canvasId, cfg);
-}
-
-/* ---- Delivery reliability (doughnut gauge) ---- */
-function renderReliabilityChart(canvasId, rows) {
-  const sent = rows.filter((a) => a.status_ok === true).length;
-  const err = rows.filter((a) => a.status_ok === false).length;
-  const cfg = {
-    type: "doughnut",
-    data: {
-      labels: [t("sent_label"), t("failed_label")],
-      datasets: [{ data: [sent, err], backgroundColor: ["#2d8a4e", "#d93b3b"], borderColor: "#faf8f1", borderWidth: 3, borderRadius: 3 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: "68%",
-      plugins: {
-        legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 }, padding: 16 } },
-        tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.raw}` } },
-      },
     },
   };
   upsert(canvasId, canvasId, cfg);
@@ -204,26 +139,6 @@ function renderAuthorityChart(canvasId, rows) {
       indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: { x: { beginAtZero: true, grid: { color: "#e8e3d8" } }, y: { grid: { display: false } } },
-    },
-  };
-  upsert(canvasId, canvasId, cfg);
-}
-
-/* ---- County-scoped timeline (single series) ---- */
-function renderCountyTimelineChart(canvasId, rows) {
-  const m = countBy(rows, "date");
-  const labels = [...m.keys()].sort();
-  const data = labels.map((d) => m.get(d));
-  const cfg = {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{ data, borderColor: "#2a6fc4", backgroundColor: "rgba(42,111,196,.12)", fill: true, tension: .25, pointRadius: 0, borderWidth: 2 }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } }, y: { beginAtZero: true, grid: { color: "#e8e3d8" } } },
     },
   };
   upsert(canvasId, canvasId, cfg);

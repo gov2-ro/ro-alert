@@ -3,12 +3,16 @@
 ## Audit implementation hand-off
 
 - [x] Prepare specs and implementation guidelines. Entry point: `docs/IMPLEMENTATION_HANDOFF.md`.
-- [ ] Phase 01: analytics correctness. Brief: `docs/briefs/audit-01-analytics.md` (A01–A10).
+- [x] Phase 01: analytics correctness. Done on branch `feat/audit-01-analytics`. Brief: `docs/briefs/audit-01-analytics.md` (A01–A10).
 - [ ] Phase 02: pipeline reliability. Brief: `docs/briefs/audit-02-pipeline.md` (P01–P11).
 - [ ] Phase 03: shared state, places, and language. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
 - [ ] Phase 04: mobile and accessibility. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
 - [ ] Phase 05: visual and geographic architecture. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
 - [ ] Phase 06: browsing, export, and rendering. Brief: `docs/briefs/audit-06-browsing.md` (B01–B11).
+
+- [ ] Phase 01 follow-up: `js/story.js` keeps its own `BEAR_RE` copy (the "Pe scurt" bear share
+  counts the word, not the category). Share one rule through the build in a later phase. The
+  Feed chips and `CAT_COLORS` also still list the categories twice.
 
 These phase tasks track delivery. The audit items below retain the findings and measurements.
 Close an audit item only when all of its assigned work passes the brief's checks.
@@ -17,12 +21,12 @@ Close an audit item only when all of its assigned work passes the brief's checks
 
 The audit changed no application code or data. Items below need implementation and review.
 
-- [ ] **P1 — Risk classification:** `risk_category` matches `urs` inside unrelated words.
+- [x] **P1 — Risk classification:** `risk_category` matches `urs` inside unrelated words.
   Examples include `sursele`, `hours`, `downpours`, and `watercourses`. Found 48 suspect
   animal classifications outside the source animal category, without a Romanian bear match.
   These include 32 storm and 8 flood records. Use source risk fields first. Bound fallback
   keywords to words. Add regression fixtures for these examples.
-- [ ] **P1 — Daily timeline:** local `setDate` changes a UTC-parsed date across summer time.
+- [x] **P1 — Daily timeline:** local `setDate` changes a UTC-parsed date across summer time.
   Europe/Bucharest produces March 29 twice and omits August 31. Chart stacks total 3,369,
   against 3,385 alerts; 16 alerts disappear. Use UTC calendar arithmetic. Check UTC,
   Europe/Bucharest, and America/New_York.
@@ -30,7 +34,7 @@ The audit changed no application code or data. Items below need implementation a
   replacement. Search, dates, and facets become unavailable. At 390 px, the feed body is
   90 px wide beside a fixed 240 px summary. Navigation makes the document 407 px wide at
   both 390 px and 320 px. Add a filter drawer and stack the feed summary.
-- [ ] **P1 — Coverage of failures:** the overview divides one failed alert by all 3,385
+- [x] **P1 — Coverage of failures:** the overview divides one failed alert by all 3,385
   alerts. Only April reports failed deliveries. Scope the rate to reporting months and
   show its denominator. Keep source SENT status separate from proof of device receipt.
 - [ ] **P2 — Workflow no-change path:** the month extraction pipeline exits 1 when ingest

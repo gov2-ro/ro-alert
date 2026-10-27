@@ -72,9 +72,8 @@ function storyStats(rows, withOfficial) {
     .slice(0, 10)
     .map((e) => ({ name: e.name, judet: e.judet, n: e.n,
                    risk: [...e.risks.entries()].sort((x, y) => y[1] - x[1])[0][0] }));
-  const ds = deliveryStats(rows);
   return { n, bear, bearPct: pctRate(bear, n), evening, withHour, eveningPct: pctRate(evening, withHour),
-           failedAlerts, months, topPlaces, delivery: ds };
+           failedAlerts, months, topPlaces };
 }
 
 function fmtChange(c) {
@@ -87,13 +86,7 @@ function storyCap(key) { return `<p class="chart-cap">${t(key)}</p>`; }
 function renderStory(rows, container) {
   const withOfficial = !hasActiveFilters(state);
   const S = storyStats(rows, withOfficial);
-  const d = S.delivery;
-  const reporting = (DATA.meta.months || []).filter((m) => m.reports_errors).map((m) => m.key).join(", ");
-  const failBody = d
-    ? `<p>${t("story_fail_alerts").replace("%a", S.failedAlerts)}</p>
-       <p>${t("story_fail_deliv").replace("%f", d.failed).replace("%d", d.total).replace("%m", esc(reporting))} (${fmtPct(d.rate)}%)</p>
-       <p class="chart-cap">${t("story_fail_note")}</p>`
-    : `<p>${t("story_fail_alerts").replace("%a", S.failedAlerts)}</p><p class="chart-cap">${t("story_fail_none")}</p>`;
+  const failBody = `${failureLinesHtml(rows)}<p class="chart-cap">${t("story_fail_note")}</p>`;
 
   const changeCells = S.months.map((m) => {
     const lab = m.kind === "gap" ? t("story_no_file") : m.kind === "hidden" ? "—" : fmtChange(m.change);

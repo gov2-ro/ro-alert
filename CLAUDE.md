@@ -10,9 +10,12 @@ lab.gov2.ro/ro-alert. The UI and the data are in Romanian; `js/i18n.js` adds Eng
 
 ## Commands
 
-There is no build tool, no linter and no test suite. `ingest.py` needs `xlrd` and
+There is no build tool and no linter. `ingest.py` needs `xlrd` and
 `openpyxl`; `build_data.py` uses only the standard library.
 
+- Run the tests: `python3 -m unittest discover -s tests -p 'test_*.py'` and
+  `node --test tests/js/*.test.cjs`. The browser smoke test is `node tests/browser/smoke.cjs`
+  (after `npm install`; see README).
 - Set up once: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 - Fetch new months: `.venv/bin/python ingest.py`. The script queries the data.gov.ro CKAN API,
   downloads new or changed files, and writes `sources/YYYY-MM.csv` and `sources/manifest.json`.
@@ -55,7 +58,7 @@ after each rebuild, because the deployed app reads only them.
 
 **Front end.** The app is plain browser JS with no modules and no bundler. Each file in
 `js/` defines globals. `index.html` loads them in dependency order: vendor (Leaflet,
-Chart.js, vendored locally) → data bundles → `i18n` → `data` → `filters` → views →
+Chart.js, vendored locally) → data bundles → `i18n` → `stats` → `data` → `filters` → views →
 `app.js`. Keep this order when you add a file.
 
 - `app.js` owns `window.state` (language, view, facet sets, search, date range, selected

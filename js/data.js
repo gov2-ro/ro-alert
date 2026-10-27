@@ -77,26 +77,6 @@ function restoreAlerts(alerts, omitted) {
   }
 }
 
-/* Delivery figures for a selection of alerts. An alert is one message; a delivery is one
-   channel or retry row of it. Only months with `reports_errors` in META.months report
-   ERROR deliveries, so the figures cover those months only.
-   Returns null when the selection holds no such month. */
-function deliveryStats(rows) {
-  const months = (DATA.meta && DATA.meta.months) || [];
-  const reporting = new Set(months.filter((m) => m.reports_errors).map((m) => m.label));
-  let total = 0, failed = 0, n = 0;
-  for (const a of rows) {
-    if (!reporting.has(a.month)) continue;
-    n++;
-    for (const d of a.deliveries || []) {
-      total++;
-      if (d.status === "ERROR") failed++;
-    }
-  }
-  if (!n) return null;
-  return { total, failed, rate: pctRate(failed, total) };
-}
-
 /* Percentage of part in total, as a number (0..100). */
 function pctRate(part, total) {
   return total ? (part / total) * 100 : 0;
@@ -109,9 +89,45 @@ function fmtPct(r) {
   return r < 10 ? String(Math.round(r * 10) / 10) : String(Math.round(r));
 }
 
-/* KPI card for delivery failures; empty string when the selection has no reporting month. */
-function deliveryKpiHtml(rows) {
-  const ds = deliveryStats(rows);
-  if (!ds) return "";
-  return `<div class="kpi"><div class="v">${ds.failed}</div><div class="k">${t("kpi_delivery_failed")}</div><div class="sub">${fmtPct(ds.rate)}% ${t("of_deliveries")} · ${t("delivery_note")}</div></div>`;
+/* Failure figures for a selection, with the labels every view shows.
+   One source for the Dashboard, Local, Feed, sidebar and "Pe scurt" views.
+   The data proves observed statuses, not receipt on a device. A rate exists only for
+   the reporting sample: the selected alerts from months with `error_reporting` "observed". */
+function failureCoverage(rows) {
+  const s = Stats.selectionStats(rows, (DATA.meta && DATA.meta.months) || []);
+  const months = s.reportingMonths.join(", ");
+  const share = (n, d, r) => (r == null ? null : { text: `${n} / ${d}`, pct: `${fmtPct(r)}%` });
+  return {
+    stats: s, months, observed: s.failedAlerts,
+    alerts: share(s.reportingFailedAlerts, s.reportingAlerts, s.alertRate),
+    deliveries: share(s.reportingErrorDeliveries, s.reportingDeliveries, s.deliveryRate),
+  };
+}
+
+function failureSub(share, months) {
+  return t("fail_sample_sub").replace("%p", share.pct).replace("%m", esc(months));
+}
+
+/* KPI cards for the failure figures: the observed count, then the sample shares
+   (or one card that says the coverage is unknown). */
+function failureKpisHtml(rows) {
+  const c = failureCoverage(rows);
+  const head = `<div class="kpi err"><div class="v">${c.observed}</div><div class="k">${t("kpi_failed")}</div><div class="sub">${t("fail_observed_sub")}</div></div>`;
+  if (!c.alerts) {
+    return head + `<div class="kpi"><div class="v">—</div><div class="k">${t("fail_unknown")}</div><div class="sub">${t("fail_unknown_sub")}</div></div>`;
+  }
+  return head +
+    `<div class="kpi"><div class="v">${c.alerts.text}</div><div class="k">${t("fail_sample_alerts")}</div><div class="sub">${failureSub(c.alerts, c.months)}</div></div>` +
+    `<div class="kpi"><div class="v">${c.deliveries.text}</div><div class="k">${t("fail_sample_deliv")}</div><div class="sub">${failureSub(c.deliveries, c.months)}</div></div>`;
+}
+
+/* The same figures as short text lines, for panels that have no room for cards. */
+function failureLinesHtml(rows) {
+  const c = failureCoverage(rows);
+  const observed = `<p>${t("fail_observed_line").replace("%n", c.observed)}</p>`;
+  if (!c.alerts) return observed + `<p>${t("fail_unknown_line")}</p><p class="chart-cap">${t("fail_caveat")}</p>`;
+  const line = t("fail_sample_line").replace("%m", esc(c.months))
+    .replace("%a", c.alerts.text).replace("%ap", c.alerts.pct)
+    .replace("%d", c.deliveries.text).replace("%dp", c.deliveries.pct);
+  return `${observed}<p>${line}</p><p class="chart-cap">${t("fail_caveat")}</p>`;
 }

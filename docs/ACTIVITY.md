@@ -1,5 +1,48 @@
 # Activity
 
+## 2026-10-27 — Audit phase 01: analytics correctness (branch `feat/audit-01-analytics`, Sonnet)
+
+**Done**
+- `build_data.py`: `classify_risk()` returns category and rule id. Structured fields decide first
+  (`Risc asociat`, then `Risc principal`); free text applies only when they do not. The rule table
+  sits beside the function. Bear words use one rule (`BEAR_RE`, `BEAR_EN_RE`, whole words only).
+  `meta.months[].error_reporting` is `observed`, `unknown` or `not_applicable`. `reports_errors` stays.
+- `js/stats.js` (new, pure, loads in Node too): `dayRange` (UTC arithmetic), `dailyCounts`,
+  `selectionStats`. `data.js` adds `failureCoverage`, `failureKpisHtml`, `failureLinesHtml`. The
+  Dashboard, Local, Feed, sidebar and "Pe scurt" views all read them. The reliability doughnut is
+  now a text panel. Local uses the Dashboard's daily stacked chart. Line smoothing removed.
+- Tests: `tests/test_risk.py`, `tests/test_build.py`, `tests/js/stats.test.cjs`,
+  `tests/browser/smoke.cjs` (Playwright-core with system Chrome, development only).
+  `tools/risk_change_report.py` diffs two builds by alert ID.
+
+**Measured**
+- Corpus unchanged: 3,385 alerts, 3,618 deliveries, 196 ERROR rows, 1 failed alert, 21 CANCEL.
+- Diff by alert ID: only `risk_category` changed, on 53 alerts. All other fields and all delivery
+  rows are equal (the script exits 1 otherwise). Category counts, before -> after: Animale
+  periculoase 2387 -> 2337, Meteo 583 -> 616, Copil dispărut 140 -> 142, Inundații 126 -> 134,
+  Atac aerian / dronă 91 -> 94, Incendiu 32 -> 32, Tehnologic 9 -> 16, Altele 17 -> 14.
+  Changes: 33 animal -> Meteo, 8 animal -> Inundații, 7 animal -> Tehnologic, 2 animal -> Copil
+  dispărut, 3 Altele -> Atac aerian / dronă (text rule, drone words).
+- Bundles, before -> after: `alerts.js` 4,531,815 -> 4,531,252; `meta.js` 34,304 -> 34,642;
+  `geo.js` 250,835 (unchanged). Two builds in a temporary folder give identical bundles.
+- Daily axis: 210 unique dates, 2026-02-03 to 2026-08-31, in UTC, Europe/Bucharest and
+  America/New_York; stack total 3,385; 2026-08-31 holds 16; 2026-03-29 occurs once.
+- Reporting sample (all data and April): 1 / 237 failed alerts, 196 / 470 failed deliveries.
+  May: no rate, coverage unknown.
+
+**Hard**
+- The brief's 48 suspect records are a review set. The result differs: 50 animal records changed
+  (2 extra are Copii disparuti records whose structured risk was overridden by text), plus 3 new
+  drone records from the text fallback.
+- `index.html` loads an optional Simple Analytics tag. The offline smoke run blocks it; the test
+  allows that one host and ignores its blocked-load console line.
+
+**Decided**
+- Text fallback adds Romanian and English drone words to the air category. Alternative: leave
+  those 3 records in Altele. They are real drone events, so they move.
+- The daily axis spans the first to the last selected record date, not the date inputs. Alternative:
+  span the input range; that shows empty edge days that no record selected.
+
 ## 2026-10-27 — Audit implementation specs and hand-off
 
 **Done**

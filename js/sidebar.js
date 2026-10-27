@@ -99,16 +99,16 @@ function updateSidebarVisibility() {
 function renderSidebarStats(rows) {
   const host = document.getElementById("sidebar-stats");
   if (!host) return;
-  const total = rows.length;
   const sent = rows.filter((a) => a.status_ok === true).length;
-  const err = rows.filter((a) => a.status_ok === false).length;
-  const counties = new Set(rows.filter((a) => a.scope === "county").map((a) => a.judet)).size;
-  const rate = pctRate(err, total);
+  const c = failureCoverage(rows);
+  const sample = c.alerts
+    ? `<div class="sidebar-stat" title="${esc(failureSub(c.alerts, c.months))}"><div class="sv">${c.alerts.text}</div><div class="sk">${t("fail_sample_alerts")}</div></div>
+       <div class="sidebar-stat" title="${esc(failureSub(c.deliveries, c.months))}"><div class="sv">${c.deliveries.text}</div><div class="sk">${t("fail_sample_deliv")}</div></div>`
+    : `<div class="sidebar-stat" title="${esc(t("fail_unknown_sub"))}"><div class="sv">—</div><div class="sk">${t("fail_unknown")}</div></div>`;
   host.innerHTML = `
-    <div class="sidebar-stat"><div class="sv">${total}</div><div class="sk">${t("kpi_total")}</div></div>
+    <div class="sidebar-stat"><div class="sv">${rows.length}</div><div class="sk">${t("kpi_total")}</div></div>
     <div class="sidebar-stat ok"><div class="sv">${sent}</div><div class="sk">${t("kpi_sent")}</div></div>
-    <div class="sidebar-stat err"><div class="sv">${err}</div><div class="sk">${t("kpi_error")}</div></div>
-    <div class="sidebar-stat ${rate >= 25 ? "err" : ""}"><div class="sv">${fmtPct(rate)}%</div><div class="sk">${t("kpi_error_rate")}</div></div>
-    ${(() => { const ds = deliveryStats(rows); return ds ? `<div class="sidebar-stat"><div class="sv">${ds.failed}</div><div class="sk">${t("kpi_delivery_failed")}</div></div>` : ""; })()}
+    <div class="sidebar-stat err"><div class="sv">${c.observed}</div><div class="sk">${t("kpi_error")}</div></div>
+    ${sample}
   `;
 }
