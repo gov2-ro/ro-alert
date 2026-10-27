@@ -126,7 +126,7 @@ function renderFeedSidebar(rows) {
     <div class="feed-sidebar-row"><span>${t("sent_label")}</span><span class="sent">${sent}</span></div>
     <div class="feed-sidebar-row"><span>${t("failed_label")}</span><span class="failed">${failed}</span></div>
     <div style="margin-top:8px;color:var(--text-muted);font-size:12px">
-      ${pct}% ${t("kpi_error_rate").toLowerCase()} — ${pct >= 25 ? "STS" : ""}
+      ${pct}% ${t("kpi_error_rate").toLowerCase()}
     </div>
     <div class="feed-breakdown">
       <h4>${t("feed_by_type")}</h4>

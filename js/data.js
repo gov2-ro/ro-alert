@@ -33,3 +33,30 @@ async function loadData() {
   DATA.geo = geo;
   return DATA;
 }
+
+/* Delivery figures for a selection of alerts. An alert is one message; a delivery is one
+   channel or retry row of it. Only months with `reports_errors` in META.months report
+   ERROR deliveries, so the figures cover those months only.
+   Returns null when the selection holds no such month. */
+function deliveryStats(rows) {
+  const months = (DATA.meta && DATA.meta.months) || [];
+  const reporting = new Set(months.filter((m) => m.reports_errors).map((m) => m.label));
+  let total = 0, failed = 0, n = 0;
+  for (const a of rows) {
+    if (!reporting.has(a.month)) continue;
+    n++;
+    for (const d of a.deliveries || []) {
+      total++;
+      if (d.status === "ERROR") failed++;
+    }
+  }
+  if (!n) return null;
+  return { total, failed, rate: total ? Math.round((failed / total) * 100) : 0 };
+}
+
+/* KPI card for delivery failures; empty string when the selection has no reporting month. */
+function deliveryKpiHtml(rows) {
+  const ds = deliveryStats(rows);
+  if (!ds) return "";
+  return `<div class="kpi"><div class="v">${ds.failed}</div><div class="k">${t("kpi_delivery_failed")}</div><div class="sub">${ds.rate}% ${t("of_deliveries")} · ${t("delivery_note")}</div></div>`;
+}

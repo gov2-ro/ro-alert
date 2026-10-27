@@ -66,5 +66,6 @@ function renderDashboardKpis(rows) {
     <div class="kpi err"><div class="v">${err}</div><div class="k">${t("kpi_failed")}</div></div>
     <div class="kpi ${rate >= 25 ? "err" : "ok"}"><div class="v">${rate}%</div><div class="k">${t("kpi_error_rate")}</div></div>
     <div class="kpi"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>
+    ${deliveryKpiHtml(rows)}
   `;
 }

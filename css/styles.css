@@ -418,3 +418,8 @@ a { color: var(--accent); }
 .mt-btn:disabled { opacity: .4; cursor: not-allowed; }
 @media (max-width: 760px) { .drawer-cols { grid-template-columns: 1fr; } }
 .footer-range { margin-left: 8px; opacity: 0.6; }
+
+/* drawer: delivery list */
+.del-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.del-table th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 3px 8px 3px 0; }
+.del-table td { padding: 3px 8px 3px 0; border-top: 1px solid var(--border-light); }

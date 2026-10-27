@@ -31,7 +31,7 @@ function countBy(arr, key) {
 }
 
 /* ---- Stacked timeline: daily volume stacked by hazard category, with an
-   error-count line overlay so the ~30% failure story stays visible. ---- */
+   failed-alert line overlay. ---- */
 function renderStackedTimelineChart(canvasId, rows) {
   // continuous day axis between the first and last alert
   const dates = rows.map((a) => a.date).filter(Boolean).sort();
