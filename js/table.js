@@ -85,7 +85,7 @@ function renderTableBody() {
     return `<tr class="data-row${cls}" data-id="${a.id}">${TABLE_COLS.map((c) => `<td>${c.cell(a)}</td>`).join("")}</tr>`;
   }).join("");
   body.querySelectorAll(".data-row").forEach((tr) => {
-    tr.addEventListener("click", () => openDrawer(+tr.dataset.id));
+    tr.addEventListener("click", () => openDrawer(tr.dataset.id));
   });
   if (note) note.textContent = sorted.length > TABLE_MAX ? `${shown.length} / ${sorted.length} — ${t("table_more_note")}` : "";
 }

@@ -130,6 +130,6 @@ function renderLocationFeed(rows) {
   }
   host.innerHTML = html;
   host.querySelectorAll(".feed-card").forEach((card) => {
-    card.addEventListener("click", () => openDrawer(+card.dataset.id));
+    card.addEventListener("click", () => openDrawer(card.dataset.id));
   });
 }
