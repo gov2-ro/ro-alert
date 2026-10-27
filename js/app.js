@@ -40,6 +40,7 @@ function locChips(locs, opts = {}) {
 
 /* ---- init ---- */
 let currentRows = [];
+let lastSelKey = "";          // selectionKey(state) at the last update
 let lastHash = "";            // the canonical hash that matches the current state
 let notices = [];             // [{id, code, args}] shown above the view
 let noticeSeq = 0;
@@ -51,13 +52,26 @@ function getCtx() { return _ctx || (_ctx = urlContext()); }
 async function init() {
   await loadData();
   buildSidebar();
-  // Map is initialized in renderDashboard (when #map div exists)
+  // The map is created when the Dashboard shell is mounted (when the #map div exists)
   RoMap.onCountyClick = onCountyClick;
   RoMap.onPlaceClick = selectPlace;
   wireChrome();
   wireAccess();
   renderDateLabel();
   loadFromHash(currentHash(), true);
+  RoBoot.markReady();
+}
+
+/* Start the page. Any failure while loading or drawing the first view ends in a visible error
+   with Retry (js/boot.js), never an empty page. */
+async function boot() {
+  if (RoBoot.shown) return;                      // a page script did not load: the error is on screen
+  try {
+    await init();
+  } catch (e) {
+    RoBoot.failFrom(e);
+    if (window.console) console.error(e);
+  }
 }
 
 function renderDateLabel() {
@@ -83,8 +97,12 @@ function renderFooterRange() {
 function update(mode, opts = {}) {
   const focus = captureFocus();
   normalizeState(state, getCtx());
+  // A new selection or a new order starts at page 1. History steps restore the page they stored.
+  const key = selectionKey(state);
+  if (mode !== "none" && key !== lastSelKey && state.page !== 1) { state.page = 1; normalizeState(state, getCtx()); }
+  lastSelKey = key;
   syncControls();
-  if (opts.render !== false) render();
+  if (opts.render !== false) render(opts);
   syncDrawer();
   restoreFocus(focus, opts.focusFallback);
   if (mode !== "none") writeUrl(mode, opts.historyState);
@@ -172,6 +190,13 @@ function wireChrome() {
   });
 
   document.addEventListener("click", (e) => { if (e.target.closest("[data-goto-sources]")) gotoSources(); });
+
+  // Pager and export buttons live in the list views; the main region persists, so one handler serves all.
+  document.getElementById("content-main").addEventListener("click", (e) => {
+    const go = e.target.closest("[data-page-go]");
+    if (go && !go.disabled) { goToPage(state.page + (go.dataset.pageGo === "next" ? 1 : -1)); return; }
+    if (e.target.closest("[data-export]")) exportSelection();
+  });
 
   window.addEventListener("popstate", onHistory);
   window.addEventListener("hashchange", onHistory);
@@ -294,29 +319,51 @@ function leaveLocal() {
   update("push");
 }
 
-/* ---- main render ---- */
-function render() {
-  currentRows = applyFilters(DATA.alerts, state);
+/* ---- main render ----
+   The shell of a view stays while filters, sort, page or language change: the view's update
+   function refreshes the parts, and Chart.js and Leaflet keep their instances. A new shell is
+   mounted only when the kind of view changes. Leaving a view (or showing an empty state)
+   destroys its charts and map. `opts.listOnly` (a page change) redraws only the record list. */
+let mountedKind = null;
 
-  const main = document.getElementById("content-main");
-  // Destroy old charts and map before clearing DOM
+function viewKind(rows) {
+  if (state.view === "location") return rows.length ? "location" : "location-empty";
+  return rows.length ? state.view : "empty";
+}
+
+function unmountView() {
   destroyAllCharts();
   destroyMap();
-  main.innerHTML = "";
+  mountedKind = null;
+}
 
-  if (state.view === "location") {
-    renderLocation(currentRows, main);       // draws its own heading, also with no records
-  } else if (!currentRows.length) {
-    renderEmpty(main);
-  } else if (state.view === "story") {
-    renderStory(currentRows, main);
-  } else if (state.view === "dashboard") {
-    renderDashboard(currentRows, main);
-  } else if (state.view === "table") {
-    renderTable(currentRows, main);
-  } else if (state.view === "feed") {
-    renderFeed(currentRows, main);
+const VIEW_PARTS = {
+  dashboard: { mount: mountDashboard, update: updateDashboard },
+  table: { mount: mountTable, update: updateTable },
+  feed: { mount: mountFeed, update: updateFeed },
+  location: { mount: mountLocation, update: updateLocation },
+  "location-empty": { mount: mountLocationEmpty, update: updateLocationEmpty },
+};
+
+function render(opts = {}) {
+  currentRows = applyFilters(DATA.alerts, state);
+  // An out-of-range page (a link, or fewer results than before) shows the last valid page.
+  if (URL_PAGED_VIEWS.includes(state.view)) state.page = pageInfo(currentRows.length, state.page).page;
+
+  const main = document.getElementById("content-main");
+  const kind = viewKind(currentRows);
+  const parts = VIEW_PARTS[kind];
+  const keep = !!parts && mountedKind === kind;
+  mountedKind = null;                          // stays null if drawing throws: the next render mounts afresh
+  if (!keep) {
+    unmountView();
+    main.innerHTML = "";
+    if (parts) parts.mount(main);
   }
+  if (parts) parts.update(currentRows, { listOnly: !!opts.listOnly && keep });
+  else if (kind === "story") renderStory(currentRows, main);
+  else renderEmpty(main);
+  mountedKind = parts ? kind : null;           // Pe scurt and the empty state are redrawn each time
 
   renderSidebarStats(currentRows);
   renderCoverage(currentRows.length);
@@ -324,6 +371,13 @@ function render() {
   const countEl = document.getElementById("result-count");
   if (countEl.textContent !== countText) countEl.textContent = countText;   // no repeat announcement
   syncFilterButtons(currentRows.length);
+}
+
+/* One page change: the list changes, the charts and the map stay. */
+function goToPage(n) {
+  state.page = n;
+  update("push", { listOnly: true });
+  focusListHeading();
 }
 
 /* The coverage bar sits outside the replaceable view, so source status and the method link
@@ -347,6 +401,8 @@ function renderEmpty(main) {
   main.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${t("no_results")}</p>` +
     `<button type="button" class="link-btn" id="empty-clear">${t("empty_clear")}</button></div>`;
   document.getElementById("empty-clear").addEventListener("click", clearAll);
+  // Table and Feed offer the export; with no record it stays visible, disabled, and says why.
+  if (state.view === "table" || state.view === "feed") main.insertAdjacentHTML("beforeend", exportHtml(0));
   // The Sources section stays reachable without records.
   if (state.view === "story" && typeof sourcesHtml === "function") main.insertAdjacentHTML("beforeend", sourcesHtml());
 }
@@ -516,5 +572,5 @@ function fillDrawer(a, inSelection) {
 }
 
 /* ---- boot ---- the footer follows the scripts, so wait until the page is parsed */
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
-else init();
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+else boot();

@@ -143,6 +143,7 @@ function upsert(name, canvasId, cfg) {
   cfg.options = cfg.options || {};
   cfg.options.locale = state.lang === "en" ? "en-GB" : "ro-RO";   // one number format with the UI text
   describeChart(el, cfg);
+  if (charts[name] && charts[name].canvas !== el) destroyChart(name);   // a new canvas needs a new chart
   if (charts[name]) {
     charts[name].data = cfg.data;
     charts[name].options = cfg.options;
@@ -177,12 +178,20 @@ function describeChart(canvas, cfg) {
   if (!det || !det.classList.contains("chart-data")) {
     det = document.createElement("details");
     det.className = "chart-data";
+    det.innerHTML = "<summary></summary>";
+    det.addEventListener("toggle", () => { if (det.open) fillChartTable(det); });   // wired once per chart
     box.after(det);
   }
-  det.innerHTML = `<summary>${esc(t("chart_data_show"))}</summary>`;
-  det.addEventListener("toggle", () => {
-    if (det.open && !det.querySelector("table")) det.insertAdjacentHTML("beforeend", chartTableHtml(title, cfg.data));
-  });
+  det.querySelector("summary").textContent = t("chart_data_show");
+  det._chart = { title, data: cfg.data };              // the table always shows the latest data
+  if (det.open) fillChartTable(det);
+  else { const old = det.querySelector(".chart-data-scroll"); if (old) old.remove(); }
+}
+
+function fillChartTable(det) {
+  const old = det.querySelector(".chart-data-scroll");
+  if (old) old.remove();
+  det.insertAdjacentHTML("beforeend", chartTableHtml(det._chart.title, det._chart.data));
 }
 
 function chartTableHtml(title, data) {

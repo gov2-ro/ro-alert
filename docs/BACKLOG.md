@@ -8,7 +8,7 @@
 - [x] Phase 03: shared state, places, and language. Done on branch `feat/audit-03-state`. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
 - [x] Phase 04: mobile and accessibility. Done on branch `feat/audit-04-access`. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
 - [x] Phase 05: visual and geographic architecture. Done on branch `feat/audit-05-visual`. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
-- [ ] Phase 06: browsing, export, and rendering. Brief: `docs/briefs/audit-06-browsing.md` (B01–B11).
+- [x] Phase 06: browsing, export, and rendering. Done on branch `feat/audit-06-browsing`. Brief: `docs/briefs/audit-06-browsing.md` (B01–B11).
 
 - [ ] Phase 01 follow-up: `js/story.js` keeps its own `BEAR_RE` copy (the "Pe scurt" bear share
   counts the word, not the category). Share one rule through the build in a later phase. (The
@@ -50,10 +50,11 @@ The audit changed no application code or data. Items below need implementation a
   The detail drawer has no dialog role, focus transfer, or focus containment. Search and date
   inputs need explicit labels. Charts need text or table alternatives. The dim text token
   `#999` on `#faf8f1` has 2.68:1 contrast. Increase contrast for small text.
-- [ ] **P2 — Browse and share:** table truncates at 500 of 3,385 rows with no pagination.
+- [x] **P2 — Browse and share:** table truncates at 500 of 3,385 rows with no pagination.
   Feed creates 3,385 cards and 48,923 DOM elements. Add pagination and filtered export.
   Store view, filters, county, locality, and record id in the URL. Support browser Back.
-  Phase 03 did the URL and Back part (`js/urlstate.js`). Open for Phase 06: pagination and export.
+  Phase 03 did the URL and Back part (`js/urlstate.js`). Done in Phase 06: 50 records per page in Table,
+  Feed and Local, and a JSON export of the whole selection (CSV is deferred, see below).
 - [x] **P2 — Pipeline validation:** add offline CI for workbook fixtures, delivery conservation,
   unique ids, valid dates, supported statuses, and compact/restore parity. Fail on conflicting
   duplicate ids. Stage CSV and manifest changes before replacing the current snapshot.
@@ -68,19 +69,20 @@ The audit changed no application code or data. Items below need implementation a
 - [x] **P3 — Visual hierarchy:** separate county fills from locality points; 1,373 points
   obscure the county map. Reduce repeated status KPIs. Move delivery diagnostics into a
   coverage-labelled panel. Use neutral colours for changes in warning volume. Done in Phase 05.
-- [ ] **P3 — Small architecture changes:** consolidate the two facet definitions and category
+- [x] **P3 — Small architecture changes:** consolidate the two facet definitions and category
   colours. Render once on language changes. Preserve map and chart instances on filtering.
   Add a data schema version, build input hashes, and a visible load-error state.
   Done: one facet registry, one category palette, one render per language change (Phase 03);
-  schema version and input hashes (Phase 02). Open for Phase 06: keep map and chart instances
-  on filtering, and the visible load-error state.
+  schema version and input hashes (Phase 02); map and chart instances kept on filtering and language
+  changes, and the visible load-error state with Retry (Phase 06).
 - [x] **P3 — Language and provenance:** normalize diacritics for search and include resolved
   place names. Translate derived category labels. Recognize English-only messages instead
   of storing them as Romanian. Label source last_modified separately from last ingest.
-- [ ] **P3 — Build inputs and memory:** keep or document the source county geometry needed
+- [x] **P3 — Build inputs and memory:** keep or document the source county geometry needed
   to regenerate geo.js; it is currently ignored. Reconcile stale sizes and duplicate tasks
-  below. Current alerts.js is 4,531,815 bytes; gzip default level gives 466,525 bytes.
-  (After Phase 03: `alerts.js` is 4,664,511 bytes.)
+  below. The geometry is tracked in `geometry/` (Phase 02). Current bundles (Phase 06, unchanged since
+  Phase 03): `alerts.js` 4,664,511 bytes (gzip default level 472,600), `meta.js` 35,993, `geo.js` 250,835.
+  The stale sizes and duplicate tasks are reconciled in Phase 06 (see its ACTIVITY entry).
 
 - [ ] Phase 03 follow-up: three alerts keep English text in `locations` because the location
   extraction still reads the earlier splitter's Romanian half (`9483912b17c5`, `e104d8bef73e`,
@@ -98,7 +100,7 @@ The audit changed no application code or data. Items below need implementation a
 - [x] Smaller data bundle. Brief: `docs/briefs/data-size.md`. Done on branch `feat/data-size`:
   `geo.js` 1.35 MB -> 251 KB; `alerts.js` 7.20 MB -> 4.30 MB (gzip 493 KB -> 398 KB).
 - [ ] Watch the size of `alerts.js`. Act when it passes 12 MB raw (owner, 2026-10-27); it is
-  4.30 MB now. Candidates, measured: `locations[].type` (about 179 KB), `deliveries[].sent_at`
+  4.66 MB now (4,664,511 bytes). Candidates, measured: `locations[].type` (about 179 KB), `deliveries[].sent_at`
   equal to the alert `sent_at` (about 115 KB), `localities` derivable from `locations` (about
   98 KB), or a lazy file for `msg_en`.
 - [x] Localities from `Lista poligoane`, with a map layer. Brief: `docs/briefs/localities.md`.
@@ -108,16 +110,15 @@ The audit changed no application code or data. Items below need implementation a
   zoom, or add a toggle between counties and points.
 - [ ] Localities: 131 mentions are ambiguous (two places with the same name in one county). Decide whether to pick the larger place or the one nearest to the alert centroid.
 - [x] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`. Done on branch `feat/story-view`.
-- [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
-  runs timed out on connect, 2026-10-27). Deferred by the owner (2026-10-27): do not start
-  until the owner says so.
 - [x] Deploy script: `tools/deploy.sh` copies the page files to a local folder or to
   `DEPLOY_HOST:DEPLOY_PATH` from `.env` (owner request, 2026-10-27). Tested locally only.
-- [ ] Scheduled update on lab.gov2.ro (Apache on 67.205.1.122). A daily cron job on the VPS
-  runs `ingest.py` and `build_data.py`, and publishes the static files to the web folder.
-  Publish without review when the manifest has no new warnings; hold the update and tell
-  the owner when it has. Push the new `sources/` and `data/*.js` to GitHub. Open: SSH user,
-  web folder, whether the VPS can reach data.gov.ro, the alert channel for a held update.
+- [ ] Scheduled update and deploy on the VPS (lab.gov2.ro, Apache on 67.205.1.122). GitHub-hosted runners
+  cannot reach data.gov.ro (2 of 2 runs timed out on connect, 2026-10-27). Deferred by the owner: do
+  not start until the owner says so. A daily cron job would run `ingest.py` and `build_data.py`, publish
+  with `tools/deploy.sh` and the VPS env file, and push the new `sources/` and `data/*.js` to GitHub. It
+  would publish without review when the manifest has no new warnings, and hold the update and tell the
+  owner when it has. Open: SSH user, web folder, whether the VPS can reach data.gov.ro, the alert channel
+  for a held update.
 - [x] The ingest step hid a failed `ingest.py` (pipe into `tee` without `pipefail`).
 
 - [x] Count alerts, not delivery rows (April has one row per channel and retry; 470 rows
@@ -127,12 +128,14 @@ The audit changed no application code or data. Items below need implementation a
   decimal below 10%, or the count.
 - [x] Monthly timeline: add the official totals of the summary-only months (2025-09 286,
   2025-10 146, 2025-12 96, 2026-01 61), marked as official summary.
-- [ ] Location resolution: resolve from `Lista poligoane` first. Target from
+- [x] Location resolution: resolve from `Lista poligoane` first. Target from
   mariuscomper.uk: 94.8% of bear-alert locality mentions resolved without ambiguity.
+  Done with the localities task above: 98.4% of bear mentions and 94.9% of all mentions resolved.
 
-- [~] Automatic ingest from data.gov.ro (CKAN API → `sources/YYYY-MM.csv` → build), with a
+- [x] Automatic ingest from data.gov.ro (CKAN API → `sources/YYYY-MM.csv` → build), with a
   daily GitHub Action that opens a pull request. Brief: `docs/briefs/ckan-ingest.md`.
-  Built on branch `feat/ckan-ingest`; waits for the owner's decision on the next item.
+  Merged (v0.3.0). The Action cannot reach data.gov.ro (verified limit below); the scheduled run
+  is the deferred VPS item.
 - [x] **Defect: dedup by `id` removed 214 valid April rows.** Closed by the alert unit: April
   alerts group by title + `Data creare` + `Tip mesaj`; all 3618 rows are deliveries.
 - [ ] Owner decision: make "Pe scurt" the landing tab? Now the page opens on Dashboard.
@@ -141,8 +144,6 @@ The audit changed no application code or data. Items below need implementation a
 - [ ] Find the cause of the August Grand Total mismatch (557 rows, total 556).
 - [x] UI: show that delivery failures exist only for months that report ERROR rows. Done with
   the alert unit (`meta.months[].reports_errors`).
-- [ ] Deploy to lab.gov2.ro after a data pull request merges. Use `tools/deploy.sh` with the
-  VPS env file. The web folder and SSH user are still open.
 
 ## Boilerplate phrase detection
 
@@ -187,8 +188,8 @@ layer is *resolution* — turning candidates into validated places + coordinates
 
 ## Phase 04 follow-up
 
-- [ ] Phase 06: the Feed still renders every card; on a phone the page is long. Pagination (B-checks)
-  also shortens the mobile scroll. The Table keeps its 500-row cap.
+- [x] The Feed rendered every card; on a phone the page was long. Done in Phase 06: 50 cards per page,
+  and the Table has no 500-row cap (68 pages of 50).
 - [-] Phase 05 reviewed the Leaflet map keyboard access: the shapes stay out of the Tab order and the list
   under the map stays the keyboard route in both modes. Reason: 41 shapes and 1,373 points would add
   more than 1,400 Tab stops; the list gives the same actions.
@@ -202,9 +203,20 @@ layer is *resolution* — turning candidates into validated places + coordinates
   mode first when a later phase has a reason to.
 - [ ] Chart date labels stay ISO (`2026-03-17`), rotated. A shorter label needs one date format for the
   tables, tooltips and axes together.
-- [ ] Phase 06: the Local view renders every record card (418 for Harghita); a screenshot of it is 98,000 px tall.
+- [x] The Local view rendered every record card (418 for Harghita). Done in Phase 06: 50 cards per page.
 - [ ] Mention resolution (94.9%) is a whole-archive figure. A per-selection figure needs the unresolved
   mentions in the alert records; the build does not store them.
+
+## Phase 06 follow-up
+
+- [ ] CSV and spreadsheet export are deferred by the brief (JSON only). Add a CSV only after the owner
+  names the columns; a flat CSV loses the `deliveries` list.
+- [ ] Pe scurt still redraws its shell and its three charts on each filter or language change (its
+  text is built from one string). B07 covers Dashboard and Local; a later phase could split Pe scurt.
+- [ ] The map mode (Counties / Localities) and the zoom live in the page, not in the URL. A shared link
+  does not carry them.
+- [ ] The corpus has no two alerts with the same send time, so the id tie-break shows only on other
+  sort keys (risk, county, status). Re-check after new months arrive.
 
 ## Verified limits
 

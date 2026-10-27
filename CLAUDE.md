@@ -13,9 +13,10 @@ lab.gov2.ro/ro-alert. The UI and the data are in Romanian; `js/i18n.js` adds Eng
 There is no build tool and no linter. `ingest.py` needs `xlrd` and
 `openpyxl`; `build_data.py` uses only the standard library.
 
-- Run the tests: `python3 -m unittest discover -s tests -p 'test_*.py'` and
-  `node --test tests/js/*.test.cjs`. The browser smoke test is `node tests/browser/smoke.cjs`
-  (after `npm install`; see README).
+- Run the tests: `.venv/bin/python -m unittest discover -s tests -p 'test_*.py'` (the ingest tests
+  need the venv packages; without them they skip) and `node --test tests/js/*.test.cjs`. The browser
+  smoke test is `node tests/browser/smoke.cjs` (after `npm install`; about 10 minutes; see README).
+  `node tests/browser/measure.cjs` measures DOM size and render time; it is not a pass or fail check.
 - Set up once: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
 - Fetch new months: `.venv/bin/python ingest.py`. The script queries the data.gov.ro CKAN API,
   downloads new or changed files, and writes `sources/YYYY-MM.csv` and `sources/manifest.json`.
@@ -66,16 +67,28 @@ localities per county). It also writes the same objects as JS globals: `data/ale
 after each rebuild, because the deployed app reads only them.
 
 **Front end.** The app is plain browser JS with no modules and no bundler. Each file in
-`js/` defines globals. `index.html` loads them in dependency order: vendor (Leaflet,
-Chart.js, vendored locally) → data bundles → `i18n` → `stats` → `data` → `filters` → `urlstate` → views →
-`app.js`. Keep this order when you add a file.
+`js/` defines globals. `index.html` loads them in dependency order: `boot` → vendor (Leaflet,
+Chart.js, vendored locally) → data bundles → `i18n` → `stats` → `data` → `filters` → `urlstate` → `browse` →
+views → `app.js`. Keep this order when you add a file.
 
 - `app.js` owns `window.state` (built by `newState()` in `urlstate.js`: language, view, facet sets,
   search, date range, selected county, selected place as a SIRUTA code, open record, sort, page).
   Every change ends in `update(mode)`, which normalizes the state, syncs the controls, calls `render()`
   and writes the URL hash. `render()` runs `applyFilters` and draws the active view: `story`,
   `dashboard`, `table`, `feed` or `location`. A click on a county or a place opens the `location` view.
-- `data.js` loads the globals into `DATA`. It falls back to `fetch()` of the JSON files.
+  A new selection or sort resets `page` to 1 (`selectionKey` in `urlstate.js`).
+- Dashboard, Table, Feed and Local keep their shell between renders. Each has `mountX(container)`
+  (once per visit) and `updateX(rows, {listOnly})` (every render). `VIEW_PARTS` in `app.js` maps them.
+  Chart.js charts go through `upsert()` and the Leaflet map keeps its zoom; leaving the view or showing
+  the empty state destroys them. Pe scurt and the empty state are redrawn each time.
+- `browse.js` holds the stable order (`sortRecords`: key, then id), `pageInfo`, the pager, and the JSON
+  export (`buildExport`, `exportSelection`). Table, Feed and Local show 50 records per page. The export
+  covers the whole selection, not the page. `exported_at` appears only in the export, never in a bundle.
+- `boot.js` shows load errors. A missing page script, a missing or broken data bundle, a bad schema
+  version and a failed JSON fallback end in a visible error with Retry. `index.html` holds the loading text.
+- `data.js` loads the globals into `DATA` and checks their shape (`validateData`, schema version 1).
+  It reads a JSON copy (`fetch()`) only for a bundle that is absent, and never replaces a failure with
+  an empty dataset.
   `countyKey()` normalizes county names (diacritics, București-Ilfov) to match the GeoJSON.
 - `filters.js` applies AND across facets and OR inside one facet.
 - Facets have one definition: `FACET_REGISTRY` in `filters.js`. It drives `newState()`, `applyFilters`,

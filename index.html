@@ -79,7 +79,9 @@
       <div class="notices" id="notices" hidden></div>
       <div class="coverage" id="coverage" role="group" aria-label="Acoperirea datelor și sursa" data-i18n-label="cov_label"></div>
       <main class="content" id="content-main" tabindex="-1">
-        <!-- Rendered by view modules -->
+        <!-- Rendered by view modules. Until then: the loading status (js/boot.js draws a load error here). -->
+        <p class="boot-loading" id="boot-loading" role="status">Se încarcă datele… / Loading data…</p>
+        <noscript><p class="boot-loading">Această pagină are nevoie de JavaScript. / This page needs JavaScript.</p></noscript>
       </main>
     </div>
   </div>
@@ -93,6 +95,7 @@
   </dialog>
 
   <!-- ===== SCRIPTS (order matters) ===== -->
+  <script src="js/boot.js"></script>
   <script src="vendor/leaflet.js"></script>
   <script src="vendor/chart.umd.min.js"></script>
   <!-- embedded data bundles (work under file://, no server needed) -->
@@ -104,6 +107,7 @@
   <script src="js/data.js"></script>
   <script src="js/filters.js"></script>
   <script src="js/urlstate.js"></script>
+  <script src="js/browse.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/map.js"></script>
   <script src="js/sidebar.js"></script>

@@ -145,6 +145,21 @@ function updateMap(rows, selectedJudet, opts = {}) {
   }
 }
 
+/* Frame the map on what the selection shows: the counties that hold alerts (Counties mode)
+   or the drawn places (Localities mode). With nothing to frame, show the whole country. */
+function fitMapToSelection() {
+  if (!RoMap.map || !RoMap.layer) return;
+  let bounds = null;
+  const add = (b) => { bounds = bounds ? bounds.extend(b) : L.latLngBounds(b.getSouthWest(), b.getNorthEast()); };
+  if (RoMap.mode === "places" && RoMap.placeLayer) {
+    RoMap.placeLayer.eachLayer((m) => add(L.latLngBounds([m.getLatLng()])));
+  } else if (RoMap.mode !== "places") {
+    RoMap.layer.eachLayer((l) => { if (RoMap.counts[countyKey(l.feature.properties.name)]) add(l.getBounds()); });
+  }
+  if (bounds) RoMap.map.fitBounds(bounds, { padding: [30, 30], maxZoom: 9 });
+  else RoMap.map.fitBounds(RoMap.layer.getBounds(), { padding: [10, 10] });
+}
+
 /* Switch between the county fills and the locality points. Presentation only: no filter,
    result count or URL value changes, and the view is not rendered again. */
 function setMapMode(mode) {

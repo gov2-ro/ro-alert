@@ -151,6 +151,7 @@ async function view(page, name) {
 
   await require("./state.cjs")({ browser, check, URL, SHOTS });
   await require("./visual.cjs")({ browser, check, URL, SHOTS });
+  await require("./browsing.cjs")({ browser, check, URL, SHOTS });
   await require("./access.cjs")({ browser, check, URL, SHOTS, report: (m) => console.log("INFO  " + m) });
 
   await browser.close();
