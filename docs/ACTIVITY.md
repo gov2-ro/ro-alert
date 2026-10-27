@@ -41,7 +41,7 @@ Comper: 1,958.
 - One SPARQL query with `P131+` and county gave HTTP 504 (5 min). Four simple queries joined in Python
   take 33 s.
 - Bear 0 no-match against 34 for Comper: assumed our gazetteer is complete, not checked name by name.
-  Most of the all-alert no-matches are county names (`ARGES`, `ILFOV`, `VALCEA`: 31 mentions), not localities.
+  Of the 54 all-alert no-matches, 50 are county names (`ARGES`, `ILFOV`, `VALCEA`), not localities; 4 are names not in the gazetteer.
 
 ## 2026-10-27 — Data size, deploy path, next briefs
 
