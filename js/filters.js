@@ -35,7 +35,8 @@ function applyFilters(alerts, st) {
     // location view scoping (county drill-down)
     if (st.view === "location" && st.selectedCounty) {
       if (countyKey(a.judet) !== countyKey(st.selectedCounty)) return false;
-      if (st.selectedLocality && !(a.localities || []).includes(st.selectedLocality)) return false;
+      if (st.selectedLocality && !(a.localities || []).includes(st.selectedLocality)
+          && !(a.places || []).some((p) => p.name === st.selectedLocality)) return false;
     }
     // date range (compare on YYYY-MM-DD)
     if (from && (!a.date || a.date < from)) return false;

@@ -7,6 +7,8 @@ const RoMap = {
   counts: {},
   selectedKey: null,
   onCountyClick: null,
+  onPlaceClick: null,
+  placeLayer: null,
 };
 
 /* Blue sequential scale for light background */
@@ -73,6 +75,7 @@ function updateMap(rows, selectedJudet) {
   RoMap.selectedKey = selectedJudet ? countyKey(selectedJudet) : null;
   RoMap.layer.setStyle(featureStyle);
   renderMapLegend(RoMap._max);
+  renderPlaces(rows);
 
   if (RoMap.selectedKey) {
     let target = null;
@@ -83,6 +86,37 @@ function updateMap(rows, selectedJudet) {
   } else {
     RoMap.map.fitBounds(RoMap.layer.getBounds(), { padding: [10, 10] });
   }
+}
+
+/* Point layer: one circle per locality named in the polygon list of the selected alerts.
+   Radius grows with the count of alerts that name the locality. A point marks the locality
+   of the alert area, not the place of the event. */
+function renderPlaces(rows) {
+  if (RoMap.placeLayer) { RoMap.placeLayer.remove(); RoMap.placeLayer = null; }
+  const byId = new Map();
+  for (const a of rows) {
+    for (const p of a.places || []) {
+      let e = byId.get(p.siruta);
+      if (!e) { e = { p, n: 0, judets: new Map() }; byId.set(p.siruta, e); }
+      e.n++;
+      if (a.scope === "county") e.judets.set(a.judet, (e.judets.get(a.judet) || 0) + 1);
+    }
+  }
+  const group = L.layerGroup();
+  const entries = [...byId.values()].sort((a, b) => b.n - a.n);   // small points drawn last
+  for (const e of entries.reverse()) {
+    const m = L.circleMarker([e.p.lat, e.p.lon], {
+      radius: Math.min(12, 2.5 + 1.3 * Math.sqrt(e.n)),
+      color: "#9b1c1c", weight: 1, fillColor: "#d93b3b", fillOpacity: 0.55,
+      bubblingMouseEvents: false,
+    });
+    const judet = [...e.judets.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0])[0] || null;
+    m.bindTooltip(`<strong>${esc(e.p.name)}</strong><br>${e.n} ${t("legend_alerts")}`, { sticky: true });
+    m.on("click", () => { if (judet && RoMap.onPlaceClick) RoMap.onPlaceClick(judet, e.p.name); });
+    group.addLayer(m);
+  }
+  group.addTo(RoMap.map);
+  RoMap.placeLayer = group;
 }
 
 function renderMapLegend(max) {
@@ -101,6 +135,7 @@ function destroyMap() {
     RoMap.map.remove();
     RoMap.map = null;
     RoMap.layer = null;
+    RoMap.placeLayer = null;
     RoMap.counts = {};
     RoMap.selectedKey = null;
   }
