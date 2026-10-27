@@ -1,5 +1,16 @@
 # Backlog
 
+## Ingest
+
+- [ ] Automatic ingest from data.gov.ro (CKAN API → `sources/YYYY-MM.csv` → build), with a
+  daily GitHub Action that opens a pull request. Brief: `docs/briefs/ckan-ingest.md`.
+- [ ] UI: show that the failure rate exists only for months that report ERROR rows. Only
+  April 2026 reports them (measured 2026-10-27). Blocked by the ingest.
+- [ ] Deploy to lab.gov2.ro after a data pull request merges. The deploy location is not in
+  this repo.
+- [ ] Measure `data/alerts.js` with all months (1.3 MB for 648 alerts; about 4,200 alerts
+  expected). Split per month if the page load becomes slow.
+
 ## Boilerplate phrase detection
 
 RO-ALERT messages are heavily templated — the same safety instructions repeat
