@@ -311,11 +311,8 @@ def month_label(ym):
 
 
 def alert_id(r, title, msg):
-    """Stable string id: 'Identificator unic' when present, else a hash of the delivery key.
-
-    One record is one delivery: April 2026 has one row per channel (CBC CMAS, STS) for the
-    same message, and an ALERT and its CANCEL can share title, time and text. So the key
-    also holds the channel, the message type, the status and the audience.
+    """Stable string id of a row that is one alert: 'Identificator unic' when present,
+    else a hash of the row key (title, text, time, record type, message type, status, audience).
     """
     uid = (r.get("Identificator unic") or "").strip()
     if uid:
@@ -326,6 +323,36 @@ def alert_id(r, title, msg):
     ]
     key = "|".join(parts)
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+
+
+def group_id(title, data_creare, tip_mesaj):
+    """Stable id of an alert that spans several delivery rows."""
+    key = "|".join([title or "", data_creare or "", tip_mesaj or ""])
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+
+
+def group_rows(rows):
+    """Group CSV rows into alerts. Returns a list of (row_list, group_key_or_None).
+
+    A month with a `Data creare` column has one row per delivery (channel, retry). One alert
+    is then one group of rows with the same title, `Data creare` and `Tip mesaj`. ALERT and
+    CANCEL stay apart. A row without `Data creare` is one alert.
+    """
+    groups = collections.OrderedDict()
+    out = []
+    for r in rows:
+        title = (r.get("Nume si data alerta") or "").strip()
+        dc = (r.get("Data creare") or "").strip()
+        if not dc:
+            out.append(([r], None))
+            continue
+        tm = (r.get("Tip mesaj") or "").strip().upper()
+        key = (r.get("Fisier sursa"), title, dc, tm)
+        if key not in groups:
+            groups[key] = []
+            out.append((groups[key], (title, dc, tm)))
+        groups[key].append(r)
+    return out
 
 
 def norm(v):
@@ -348,7 +375,19 @@ def main():
     alerts = []
     seen_ids = set()
     duplicates = 0
-    for r in rows:
+    for grp, gkey in group_rows(rows):
+        deliveries = []
+        for g in grp:
+            gdt = parse_dt(g.get("Data trimitere"))
+            deliveries.append({
+                "channel": norm(g.get("Tip inregistrare")),
+                "status": (g.get("Status trimitere") or "").strip().upper() or None,
+                "sent_at": gdt.isoformat() if gdt else None,
+                "audienta": norm(g.get("Audienta")),
+            })
+        # representative row: the first SENT delivery, else the first row
+        rep = next((g for g, d in zip(grp, deliveries) if d["status"] == "SENT"), grp[0])
+        r = rep
         initiator = norm(r.get("Initiator alerta"))
         principal = norm(r.get("Risc principal"))
         asociat = norm(r.get("Risc asociat"))
@@ -357,6 +396,12 @@ def main():
         poligoane = norm(r.get("Lista poligoane"))
         status_trim = (r.get("Status trimitere") or "").strip().upper()
         tip_mesaj = (r.get("Tip mesaj") or "").strip().upper()
+        if any(d["status"] == "SENT" for d in deliveries):
+            status_ok = True
+        elif any(d["status"] for d in deliveries):
+            status_ok = False
+        else:
+            status_ok = None
 
         judet, scope = judet_for(initiator, title)
         dt = parse_dt(r.get("Data trimitere"))
@@ -365,7 +410,10 @@ def main():
         locations = extract_locations(ro or msg, poligoane)
         src_file = (r.get("Fisier sursa") or "").strip()
         month_key = src_file.replace(".csv", "")
-        aid = alert_id(r, title, msg)
+        if gkey:
+            aid = group_id(gkey[0], gkey[1], gkey[2])
+        else:
+            aid = alert_id(r, title, msg)
         if aid in seen_ids:
             duplicates += 1
             continue
@@ -384,7 +432,7 @@ def main():
             "risk_category": risk_category(principal, asociat, msg),
             "meteo_color": meteo_color(title, msg),
             "status_trimitere": status_trim or None,
-            "status_ok": status_trim == "SENT" if status_trim else None,
+            "status_ok": status_ok,
             "tip_mesaj": tip_mesaj or None,
             "is_cancel": tip_mesaj == "CANCEL",
             "poligoane": poligoane,
@@ -407,6 +455,8 @@ def main():
             "id_alerta": norm(r.get("ID alerta")),
             "identificator_unic": norm(r.get("Identificator unic")),
             "tip_alerta": norm(r.get("Tip alerta")),
+            # one entry per CSV row of the alert: channel, status, time, audience
+            "deliveries": deliveries,
             # parsed time
             "sent_at": dt.isoformat() if dt else None,
             "date": dt.strftime("%Y-%m-%d") if dt else None,
@@ -429,9 +479,33 @@ def main():
             for loc in a["localities"]:
                 loc_by_judet[a["judet"]][loc] += 1
 
+    # per-month figures; `reports_errors` comes from the ingest manifest
+    reports = {}
+    try:
+        with open(os.path.join(SRC_DIR, "manifest.json"), encoding="utf-8") as mf:
+            reports = {m["month"]: bool(m.get("reports_errors")) for m in json.load(mf)}
+    except (OSError, ValueError, KeyError):
+        pass
+    months = []
+    for fp in files:
+        key = os.path.basename(fp).replace(".csv", "")
+        label = month_label(key)
+        ma = [a for a in alerts if a["month"] == label]
+        derr = sum(1 for a in ma for d in a["deliveries"] if d["status"] == "ERROR")
+        months.append({
+            "key": key, "label": label,
+            "alerts": len(ma),
+            "deliveries": sum(len(a["deliveries"]) for a in ma),
+            "delivery_errors": derr,
+            "reports_errors": reports.get(key, derr > 0),
+        })
+
     dates = [a["sent_at"] for a in alerts if a["sent_at"]]
     meta = {
         "total": len(alerts),
+        "deliveries": sum(len(a["deliveries"]) for a in alerts),
+        "delivery_error": sum(1 for a in alerts for d in a["deliveries"] if d["status"] == "ERROR"),
+        "months": months,
         "sent": sum(1 for a in alerts if a["status_ok"] is True),
         "error": sum(1 for a in alerts if a["status_ok"] is False),
         "cancel": sum(1 for a in alerts if a["is_cancel"]),
@@ -489,6 +563,7 @@ def main():
 
     print(f"  duplicates removed: {duplicates}")
     print(f"Wrote {len(alerts)} alerts -> data/alerts.json + data/*.js")
+    print(f"  deliveries={meta['deliveries']} delivery_error={meta['delivery_error']}")
     print(f"  sent={meta['sent']} error={meta['error']} cancel={meta['cancel']}")
     print(f"  date range {meta['date_min']} .. {meta['date_max']}")
     print(f"  counties with alerts: {len(judet_counts)}")
