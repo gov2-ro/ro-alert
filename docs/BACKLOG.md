@@ -3,7 +3,10 @@
 ## Ingest
 
 - [ ] Smaller data bundle. Brief: `docs/briefs/data-size.md`.
-- [ ] Localities from `Lista poligoane`, with a map layer. Brief: `docs/briefs/localities.md`.
+- [x] Localities from `Lista poligoane`, with a map layer. Brief: `docs/briefs/localities.md`.
+  Done on branch `feat/localities`: 94.9% of all mentions and 98.4% of bear mentions resolved.
+- [ ] Localities: match old spellings (`ADINCATA` for Adâncata: î written as i). Measured: 54 mentions without match, 3 of them this case.
+- [ ] Localities: 131 mentions are ambiguous (two places with the same name in one county). Decide whether to pick the larger place or the one nearest to the alert centroid.
 - [ ] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`.
 - [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
   runs timed out on connect, 2026-10-27). Needs the VPS details from the owner.
