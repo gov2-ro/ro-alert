@@ -311,11 +311,20 @@ def month_label(ym):
 
 
 def alert_id(r, title, msg):
-    """Stable string id: 'Identificator unic' when present, else a hash of title|sent_at|msg."""
+    """Stable string id: 'Identificator unic' when present, else a hash of the delivery key.
+
+    One record is one delivery: April 2026 has one row per channel (CBC CMAS, STS) for the
+    same message, and an ALERT and its CANCEL can share title, time and text. So the key
+    also holds the channel, the message type, the status and the audience.
+    """
     uid = (r.get("Identificator unic") or "").strip()
     if uid:
         return uid
-    key = "|".join([title or "", (r.get("Data trimitere") or "").strip(), msg or ""])
+    parts = [title or "", msg or ""] + [
+        (r.get(c) or "").strip()
+        for c in ("Data trimitere", "Tip inregistrare", "Tip mesaj", "Status trimitere", "Audienta")
+    ]
+    key = "|".join(parts)
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
 
 
