@@ -1,5 +1,6 @@
 # Releases
 
+- v0.15.0 — 2026-10-27 — Audit phase 06, browsing and rendering: 50-record pages in Table, Feed and Local with page in the URL; JSON export of the full selection with sources and coverage; map and charts kept across filter and language changes, with a Fit selection button; loading text and a readable load-error screen with Retry. Feed DOM 48,220 → 767 elements. Completes the audit follow-up (phases 01–06).
 - v0.14.0 — 2026-10-27 — Audit phase 05, visual and geographic architecture: coverage bar above every view; three overview cards instead of six; map modes for counties and localities with exact legends; visible national-alert count (488) and București-Ilfov convention; one reporting-quality section per view; neutral colours for monthly changes; whole-number chart axes.
 - v0.13.0 — 2026-10-27 — Deploy script: `tools/deploy.sh` copies the page files to a local folder or an SSH host, configured from `.env`.
 - v0.12.0 — 2026-10-27 — Audit phase 04, mobile and accessibility: filter drawer on phones, no horizontal overflow down to 320 px, stacked Feed summary; record details in a modal dialog with focus return; keyboard sort and record buttons; data tables behind every chart and a keyboard list for the map; text contrast at least 4.5:1; reduced motion. Browser suite with axe-core (dev only).
