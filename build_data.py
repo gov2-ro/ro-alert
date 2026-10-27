@@ -3,6 +3,7 @@
 
 Reads every `sources/YYYY-MM.csv` (written by `ingest.py`) in month order and writes:
   - data/alerts.json : one enriched object per record
+  - data/unresolved_places.csv : polygon names without a safe place (git-ignored report)
   - data/meta.json   : facet value lists + counts, per-judet counts, totals, date range
 
 Run from the project root:  python3 build_data.py
@@ -355,6 +356,116 @@ def group_rows(rows):
     return out
 
 
+# --- places from `Lista poligoane` ---------------------------------------------
+# The polygon list holds "N-NAME" items. NAME is upper case, without diacritics, without
+# a county. We resolve it against gazetteer/localities.csv (Wikidata, SIRUTA, CC0), which
+# the build reads offline. Brief: docs/briefs/localities.md.
+GAZETTEER = os.path.join(ROOT, "gazetteer", "localities.csv")
+GENERIC_GEOM = {"CERC", "POLIGON", "POLYGON", "CIRCLE"}
+POLY_ITEM_RE = re.compile(r"^\s*\d+\s*-\s*(.*?)\s*$")
+# `București` and `București-Ilfov` initiators cover both administrative units.
+COUNTY_GROUP = {"bucuresti": {"bucuresti", "ilfov"}, "bucuresti ilfov": {"bucuresti", "ilfov"}}
+LOCALITY_TYPES = {"sat", "localitate componentă", "localitate"}
+SECTOR_RE = re.compile(r"^(?:BUCURESTI )?SECTORUL? (\d)$")
+BEAR_MONTHS = {"2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"}
+BEAR_RE = re.compile(r"\burs(?:ul|ului|ule|i|ii|ilor|oaic\w*)?\b")
+
+
+def name_key(s):
+    """Upper case, no diacritics, no punctuation, single spaces."""
+    s = "".join(c for c in unicodedata.normalize("NFD", s or "") if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^A-Za-z0-9]+", " ", s).upper().strip()
+
+
+def county_norm(s):
+    return name_key(s).lower()
+
+
+COUNTY_KEYS = {county_norm(v) for v in ISU_JUDET.values()}
+
+
+def load_gazetteer(path=GAZETTEER):
+    """Return (by_county_key, by_key): dicts of lists of place dicts.
+
+    A SIRUTA village-level item (sat, localitate componentă) is a place. A commune or town
+    item (the administrative unit) is a place only when no village-level item has the same
+    key in the same county; otherwise it would count as a second candidate for the same name.
+    """
+    rows = []
+    with open(path, encoding="utf-8", newline="") as f:
+        for r in csv.DictReader(f):
+            if not (r["lat"] and r["name"]):
+                continue
+            types = set(r["type"].split("|"))
+            county = r["county"].split("|")[0]
+            if not county and (r["key"] == "BUCURESTI" or "sector al Bucureștiului" in types):
+                county = "București"
+            if not county or "județ" in types:
+                continue
+            rows.append({"siruta": int(r["siruta"]), "name": r["name"], "key": r["key"],
+                         "county": county_norm(county), "lat": round(float(r["lat"]), 4),
+                         "lon": round(float(r["lon"]), 4), "village": bool(types & LOCALITY_TYPES)})
+    village_keys = {(r["county"], r["key"]) for r in rows if r["village"]}
+    places = [r for r in rows if r["village"] or (r["county"], r["key"]) not in village_keys]
+    by_county, by_key = collections.defaultdict(list), collections.defaultdict(list)
+    for r in places:
+        by_county[(r["county"], r["key"])].append(r)
+        by_key[r["key"]].append(r)
+    return by_county, by_key
+
+
+def parse_poligoane(poligoane):
+    """Names of the polygon list items, without the generic geometry labels.
+    Returns (names, n_generic)."""
+    names, generic = [], 0
+    for tok in (poligoane or "").split(","):
+        m = POLY_ITEM_RE.match(tok)
+        name = m.group(1) if m else tok.strip()
+        if not name:
+            continue
+        if name_key(name) in GENERIC_GEOM:
+            generic += 1
+        else:
+            names.append(name)
+    return names, generic
+
+
+def resolve_place(name, judet, scope, gaz):
+    """Resolve one polygon name. Returns (status, place) with status one of
+    resolved, no_match, ambiguous.
+    County alert: match inside the county only. National alert: match when the key is
+    unique in Romania."""
+    by_county, by_key = gaz
+    key = SECTOR_RE.sub(r"SECTOR \1", name_key(name))
+    if scope == "county":
+        jk = county_norm(judet)
+        cands = []
+        for c in COUNTY_GROUP.get(jk, {jk}):
+            cands += by_county.get((c, key), [])
+    else:
+        cands = by_key.get(key, [])
+    if len(cands) == 1:
+        return "resolved", cands[0]
+    return ("ambiguous" if cands else "no_match"), None
+
+
+def unresolved_reason(status, name, judet, scope, gaz):
+    by_county, by_key = gaz
+    key = name_key(name)
+    if status == "ambiguous":
+        if scope == "county":
+            n = sum(len(by_county.get((c, key), [])) for c in COUNTY_GROUP.get(county_norm(judet), {county_norm(judet)}))
+            return "%d places with this name in the county" % n
+        return "%d places with this name in Romania" % len(by_key.get(key, []))
+    if key.lower() in COUNTY_KEYS:
+        return "county name, not a locality"
+    if scope == "national":
+        return "national alert; name not in gazetteer"
+    if by_key.get(key):
+        return "name exists only in another county"
+    return "name not in gazetteer"
+
+
 def norm(v):
     v = (v or "").strip()
     return v if v else None
@@ -372,6 +483,10 @@ def main():
                 r["Fisier sursa"] = base
                 rows.append(r)
 
+    gaz = load_gazetteer()
+    place_counts = collections.Counter()          # all alerts
+    bear_counts = collections.Counter()           # bear alerts, February-July
+    unresolved = collections.Counter()            # (status, name, judet) -> mentions
     alerts = []
     seen_ids = set()
     duplicates = 0
@@ -419,6 +534,27 @@ def main():
             continue
         seen_ids.add(aid)
 
+        names, n_generic = parse_poligoane(poligoane)
+        places, seen_sir = [], set()
+        is_bear = bool(BEAR_RE.search(_ascii(ro or msg or ""))) and src_file[:7] in BEAR_MONTHS
+        if is_bear:
+            bear_counts["alerts"] += 1
+        for nm in names:
+            status, pl = resolve_place(nm, judet, scope, gaz)
+            place_counts["mentions"] += 1
+            place_counts[status] += 1
+            if is_bear:
+                bear_counts["mentions"] += 1
+                bear_counts[status] += 1
+            if pl:
+                if pl["siruta"] not in seen_sir:
+                    seen_sir.add(pl["siruta"])
+                    places.append({"name": pl["name"], "siruta": pl["siruta"],
+                                   "lat": pl["lat"], "lon": pl["lon"]})
+            else:
+                unresolved[(status, nm, judet, unresolved_reason(status, nm, judet, scope, gaz))] += 1
+        place_counts["generic"] += n_generic
+
         a = {
             "id": aid,
             "source_file": src_file or None,
@@ -438,6 +574,7 @@ def main():
             "poligoane": poligoane,
             "locations": locations,
             "localities": [l["name"] for l in locations if l["type"] == "locality"],
+            "places": places,
             "msg": msg,
             "msg_ro": ro,
             "msg_en": en,
@@ -527,6 +664,11 @@ def main():
             "month": facet("month"),
             "scope": facet("scope"),
         },
+        "places": {
+            "all": {k: place_counts[k] for k in ("mentions", "resolved", "no_match", "ambiguous", "generic")},
+            "bear_feb_jul": {k: bear_counts[k] for k in ("alerts", "mentions", "resolved", "no_match", "ambiguous")},
+            "source": "Wikidata, SIRUTA (P843), CC0",
+        },
         "judet_counts": dict(judet_counts),
         "localities_by_judet": {
             j: [loc for loc, _ in cnt.most_common()]
@@ -535,6 +677,11 @@ def main():
     }
 
     os.makedirs(OUT_DIR, exist_ok=True)
+    with open(os.path.join(OUT_DIR, "unresolved_places.csv"), "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["status", "name", "judet", "reason", "mentions"])
+        for (st, nm, jd, why), n in sorted(unresolved.items(), key=lambda kv: -kv[1]):
+            w.writerow([st, nm, jd, why, n])
     with open(os.path.join(OUT_DIR, "alerts.json"), "w", encoding="utf-8") as f:
         json.dump(alerts, f, ensure_ascii=False, separators=(",", ":"))
     with open(os.path.join(OUT_DIR, "meta.json"), "w", encoding="utf-8") as f:
