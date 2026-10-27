@@ -26,7 +26,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --env) ENV_FILE="$2"; shift 2 ;;
     --dry-run|-n) DRY_RUN=1; shift ;;
-    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "deploy: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
