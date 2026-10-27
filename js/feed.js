@@ -104,6 +104,7 @@ function feedCardHtml(a) {
       <span class="feed-card-county">${esc(a.judet || "")}</span>
     </div>
     <div class="feed-card-msg">${esc(msg)}</div>
+    ${a.locations && a.locations.length ? `<div class="feed-card-locs loc-chips">${locChips(a.locations, { specificFirst: true, limit: 5 })}</div>` : ""}
     <div class="feed-card-footer">
       <span class="feed-card-time">${fmtTime(a.sent_at)}</span>
       ${sevBadge(a.severitate)}

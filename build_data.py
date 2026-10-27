@@ -12,6 +12,7 @@ import csv
 import json
 import os
 import re
+import unicodedata
 import collections
 from datetime import datetime
 
@@ -109,42 +110,150 @@ def meteo_color(title, msg):
     return None
 
 
-# --- locality extraction ------------------------------------------------------
-LOC_PATTERNS = [
-    re.compile(r"localit[ăa][țt]\w*\s+([A-ZȘŢȚĂÎÂ][\wșşţțăîâ .\-]+?)\s*[,!\.;:]"),
-    re.compile(r"comuna\s+([A-ZȘŢȚĂÎÂ][\wșşţțăîâ .\-]+?)\s*[,!\.;:]"),
-    re.compile(r"ora[șs]ul\s+([A-ZȘŢȚĂÎÂ][\wșşţțăîâ .\-]+?)\s*[,!\.;:]"),
-    re.compile(r"municipiul\s+([A-ZȘŢȚĂÎÂ][\wșşţțăîâ .\-]+?)\s*[,!\.;:]"),
-]
+# --- location extraction ------------------------------------------------------
+# A layered, deterministic (no-LLM) extractor. Each cue-anchored regex captures a
+# generous tail, then clean_place() trims it to a clean name. Output is a typed
+# list; `localities` (locality-typed) is kept for backward compatibility.
+#
+# Resolution/geocoding (SIRUTA lookup, Nominatim) is intentionally *not* done
+# here: this build stays offline and reproducible. See README backlog.
+
+def _ascii(s):
+    return "".join(c for c in unicodedata.normalize("NFD", s or "")
+                    if unicodedata.category(c) != "Mn").lower()
+
+
+# Tokens that terminate a place phrase: connectives, boilerplate verbs, the start
+# of the English half, and admin/road cue words (so a locality capture stops
+# before "pe strada ..."). Compared accent-insensitively, lower-cased.
+PLACE_BOUNDARY = {
+    "pe", "si", "sau", "nu", "spre", "catre", "intre", "langa", "cu", "este",
+    "sunt", "unde", "care", "ce", "din", "in", "la", "jud", "judet", "judetul",
+    "zona", "zonei", "strada", "str", "soseaua", "sos", "calea", "aleea",
+    "bulevardul", "bd", "sat", "satul", "comuna", "oras", "orasul", "municipiul",
+    "nr", "prezenta", "locuinte", "locuintele", "animal", "animalul", "va", "se",
+    "evitati", "evitand", "ramaneti", "pastrati", "respectati", "ocoliti",
+    "parasiti", "izolati", "luati", "conduceti", "mutati", "apelati",
+    "indreptati", "valabil", "perioada", "incepand", "avoid", "stay", "please",
+    "the", "isu", "dsu", "igsu", "anm", "sts", "mai", "a", "au",
+}
+# Adjectives that make a "zona X" phrase generic rather than a real placemark.
+GENERIC_PLACE = {
+    "inundabila", "inundabil", "inundabile", "afectata", "afectat", "afectate",
+    "respectiva", "respectiv", "indicata", "mentionata", "periculoasa",
+    "periculos", "limitrofe", "vizata", "vizate", "ingusta", "joasa",
+}
+# Place-type noun stems that signal a point-of-interest placemark.
+POI_NOUNS = (
+    "pensiun", "hotel", "motel", "gar", "uzin", "fabric", "gradin", "lac",
+    "schit", "aren", "stadion", "biseric", "manastir", "primari", "scoal",
+    "liceu", "spital", "pod", "baraj", "centrala", "hidrocentral", "cimitir",
+    "parc", "complex", "depozit", "rafinari", "combinat", "viaduct", "tunel",
+    "pasaj", "terminal", "sens", "intersect", "vulcanizare", "zoo",
+)
+# Admin-noun stems: if a "zona X" phrase starts with one, it's really a locality
+# reference ("zona localitatii Scoreiu"), not a distinct POI.
+ADMIN_STEMS = ("localit", "comun", "oras", "municip", "sat", "judet", "raza")
 GENERIC_POLY = {"cerc", "poligon", "polygon", "circle"}
 
 
-def extract_localities(msg, poligoane):
-    found = []
+def clean_place(raw, *, allow_lead_lower=False):
+    """Trim a raw captured span to a clean place name: drop leading junk, stop at
+    the first boundary token, cap length at 5 tokens, normalise ALL-CAPS."""
+    toks = re.split(r"\s+", re.sub(r"[‐-―]", "-", raw or "").strip())
+    out = []
+    for t in toks:
+        bare = t.strip(" .,!;:-")
+        if not bare:
+            continue
+        key = _ascii(bare)
+        if not out:
+            if key in PLACE_BOUNDARY:
+                continue
+            if not allow_lead_lower and not (bare[0].isupper() or bare[0].isdigit()):
+                continue
+        elif key in PLACE_BOUNDARY:
+            break
+        out.append(bare)
+        if len(out) >= 5:
+            break
+    name = " ".join(out).strip(" .,!;:-")
+    if len(name) < 2:
+        return None
+    return name.title() if name.isupper() else name
+
+
+ADMIN_RE = re.compile(
+    r"\b(?:localit[ăa][țt]\w*|comun[ae]i?|ora[șs]ul?|municipiul?|sat(?:ul)?|loc\.)\s+"
+    r"([A-ZȘŢȚĂÎÂ][^,!\.;:\n]{1,60})", re.IGNORECASE)
+STREET_RE = re.compile(
+    r"\b(?:strada|str\.?|bulevardul|bd\.?|b-dul|calea|aleea|[șs]oseaua|[șs]os\.?|"
+    r"pia[țt]a|intersec[țt]ia|drumul)\s+([A-ZȘŢȚĂÎÂ0-9][^,!\.;:\n]{1,50})",
+    re.IGNORECASE)
+ROAD_RE = re.compile(r"\b((?:DN|DJ|DC|E|A)\s?0*\d{1,3}[A-Z]?)\b")
+KM_RE = re.compile(r"\bkm\.?\s?(\d{1,3}(?:[+,.]\d{1,3})?)\b", re.IGNORECASE)
+RIVER_RE = re.compile(
+    r"\b(?:r[âa]ul|p[âa]r[âa]ul|valea)\s+([A-ZȘŢȚĂÎÂ][^,!\.;:\n]{1,40})",
+    re.IGNORECASE)
+POI_RE = re.compile(
+    r"\b(?:[iî]n\s+zona|zona|zonei|[iî]n\s+dreptul|l[âa]ng[ăa]|"
+    r"[iî]n\s+apropierea?(?:\s+de)?)\s+([^,!\.;:\n]{2,55})", re.IGNORECASE)
+
+
+def extract_locations(msg, poligoane=""):
+    """Return a typed list of place candidates found in the message + polygons:
+    [{"type": "locality|street|road|km|river|poi", "name": str}, ...]."""
+    text = msg or ""
+    out = []
     seen = set()
 
-    def add(name):
-        n = re.sub(r"\s+", " ", (name or "").strip()).strip(" .,-")
-        if not n:
+    def add(kind, name):
+        if not name:
             return
-        key = n.lower()
-        if key in seen or key in GENERIC_POLY:
+        key = (kind, name.lower())
+        if key in seen:
             return
         seen.add(key)
-        found.append(n)
+        out.append({"type": kind, "name": name})
 
-    for pat in LOC_PATTERNS:
-        for m in pat.findall(msg or ""):
-            # patterns may capture lists like "X si Y" -> split
-            for part in re.split(r"\s+[șs]i\s+|,", m):
-                add(part)
-    # polygon tokens: "1-PRAID", "2-IASI" -> PRAID, IASI
+    for m in ADMIN_RE.findall(text):
+        add("locality", clean_place(m))
+    for m in STREET_RE.findall(text):
+        add("street", clean_place(m))
+    for m in ROAD_RE.findall(text):
+        add("road", m.upper().replace(" ", ""))
+    for m in KM_RE.findall(text):
+        add("km", "km " + m)
+    for m in RIVER_RE.findall(text):
+        add("river", clean_place(m))
+    for m in POI_RE.findall(text):
+        name = clean_place(m, allow_lead_lower=True)
+        if not name:
+            continue
+        words = name.split()
+        a0 = _ascii(words[0])
+        if a0.startswith(ADMIN_STEMS):        # "zona localitatii X" -> not a POI
+            continue
+        if all(_ascii(w) in GENERIC_PLACE for w in words):
+            continue
+        a = _ascii(name)
+        has_poi = any(n in a for n in POI_NOUNS)
+        has_proper = any(w[0].isupper() for w in words)
+        if has_poi or has_proper:
+            add("poi", name)
+
+    # polygon tokens: "1-PRAID", "2-IASI" -> Praid, Iasi (official targets)
     for tok in (poligoane or "").split(","):
-        tok = tok.strip()
-        tok = re.sub(r"^\d+\s*-\s*", "", tok)
+        tok = re.sub(r"^\s*\d+\s*-\s*", "", tok.strip())
         if tok and tok.lower() not in GENERIC_POLY and not tok.isdigit():
-            add(tok.title() if tok.isupper() else tok)
-    return found
+            add("locality", tok.title() if tok.isupper() else tok)
+    return out
+
+
+def extract_localities(msg, poligoane):
+    """Backward-compatible: just the locality-typed names."""
+    return [l["name"] for l in extract_locations(msg, poligoane)
+            if l["type"] == "locality"]
 
 
 # --- bilingual message split --------------------------------------------------
@@ -217,6 +326,8 @@ def main():
         judet, scope = judet_for(initiator, title)
         dt = parse_dt(r.get("Data trimitere"))
         ro, en = split_bilingual(msg)
+        # extract from the Romanian half only (avoids duplicate English hits)
+        locations = extract_locations(ro or msg, poligoane)
         src_file = (r.get("Fisier sursa") or "").strip()
         month_key = src_file.replace(".csv", "")
 
@@ -237,7 +348,8 @@ def main():
             "tip_mesaj": tip_mesaj or None,
             "is_cancel": tip_mesaj == "CANCEL",
             "poligoane": poligoane,
-            "localities": extract_localities(msg, poligoane),
+            "locations": locations,
+            "localities": [l["name"] for l in locations if l["type"] == "locality"],
             "msg": msg,
             "msg_ro": ro,
             "msg_en": en,
@@ -314,13 +426,12 @@ def main():
     with open(os.path.join(OUT_DIR, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
-    # Also emit JS-wrapped bundles into web/data so the app works straight from
-    # the filesystem (file://) with no server and no fetch()/CORS issues.
-    web_data = os.path.join(ROOT, "web", "data")
-    os.makedirs(web_data, exist_ok=True)
-
+    # Also emit JS-wrapped bundles alongside the JSON in data/ so the app works
+    # straight from the filesystem (file://) with no server and no fetch()/CORS
+    # issues. The .js bundles are git-tracked (see .gitignore exceptions); the
+    # large source JSON/GeoJSON stays ignored.
     def write_js(fname, varname, obj):
-        with open(os.path.join(web_data, fname), "w", encoding="utf-8") as fh:
+        with open(os.path.join(OUT_DIR, fname), "w", encoding="utf-8") as fh:
             fh.write(f"window.{varname}=")
             json.dump(obj, fh, ensure_ascii=False, separators=(",", ":"))
             fh.write(";\n")
@@ -334,9 +445,9 @@ def main():
             geo = json.load(gf)
         write_js("geo.js", "GEO", geo)
     else:
-        print("  WARNING: data/romania-counties.geojson missing -> web/data/geo.js not written")
+        print("  WARNING: data/romania-counties.geojson missing -> data/geo.js not written")
 
-    print(f"Wrote {len(alerts)} alerts -> data/alerts.json + web/data/*.js")
+    print(f"Wrote {len(alerts)} alerts -> data/alerts.json + data/*.js")
     print(f"  sent={meta['sent']} error={meta['error']} cancel={meta['cancel']}")
     print(f"  date range {meta['date_min']} .. {meta['date_max']}")
     print(f"  counties with alerts: {len(judet_counts)}")

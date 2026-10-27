@@ -24,9 +24,9 @@ async function loadData() {
     return DATA;
   }
   const [alerts, meta, geo] = await Promise.all([
-    fetch("../data/alerts.json").then((r) => r.json()),
-    fetch("../data/meta.json").then((r) => r.json()),
-    fetch("../data/romania-counties.geojson").then((r) => r.json()),
+    fetch("data/alerts.json").then((r) => r.json()),
+    fetch("data/meta.json").then((r) => r.json()),
+    fetch("data/romania-counties.geojson").then((r) => r.json()),
   ]);
   DATA.alerts = alerts;
   DATA.meta = meta;

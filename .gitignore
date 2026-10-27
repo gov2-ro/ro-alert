@@ -1,4 +1,7 @@
 data/*
+!data/alerts.js
+!data/meta.js
+!data/geo.js
 _obsolete/*
 repository/arhiva-ro-alert/*
 repository/ui-screenshots/*

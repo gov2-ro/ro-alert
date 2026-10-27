@@ -19,6 +19,37 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/* ---- extracted locations (typed) ---- */
+const LOC_TYPE_META = {
+  locality: { icon: "▣", label: "loc_type_locality" },
+  street:   { icon: "▮", label: "loc_type_street" },
+  poi:      { icon: "◆", label: "loc_type_poi" },
+  road:     { icon: "▲", label: "loc_type_road" },
+  km:       { icon: "↦", label: "loc_type_km" },
+  river:    { icon: "≈", label: "loc_type_river" },
+};
+
+/* Render typed location chips. opts.specificFirst surfaces streets/POIs/roads
+   ahead of localities (county is already shown elsewhere); opts.limit caps the
+   count and appends a "+N" overflow chip. */
+function locChips(locs, opts = {}) {
+  if (!locs || !locs.length) return "";
+  const order = opts.specificFirst
+    ? ["poi", "street", "road", "km", "river", "locality"]
+    : ["locality", "street", "poi", "road", "km", "river"];
+  const rank = (l) => { const i = order.indexOf(l.type); return i < 0 ? 99 : i; };
+  let arr = locs.slice().sort((a, b) => rank(a) - rank(b));
+  let overflow = "";
+  if (opts.limit && arr.length > opts.limit) {
+    overflow = `<span class="loc-chip loc-more">+${arr.length - opts.limit}</span>`;
+    arr = arr.slice(0, opts.limit);
+  }
+  return arr.map((l) => {
+    const m = LOC_TYPE_META[l.type] || { icon: "•", label: "" };
+    return `<span class="loc-chip loc-${esc(l.type)}" title="${esc(t(m.label))}"><span class="loc-ic">${m.icon}</span>${esc(l.name)}</span>`;
+  }).join("") + overflow;
+}
+
 /* ---- init ---- */
 async function init() {
   await loadData();
@@ -135,6 +166,8 @@ function render() {
     main.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${t("no_results")}</p></div>`;
   } else if (state.view === "dashboard") {
     renderDashboard(currentRows, main);
+  } else if (state.view === "table") {
+    renderTable(currentRows, main);
   } else if (state.view === "feed") {
     renderFeed(currentRows, main);
   } else if (state.view === "location" && state.selectedCounty) {
@@ -183,20 +216,57 @@ function openDrawer(id) {
     ["f_repeats", a.nr_repetitii], ["f_source", a.source_file],
   ].filter(([, v]) => v);
 
-  let msgBlocks = "";
-  if (a.msg_ro) msgBlocks += `<div class="msg-block">${esc(a.msg_ro)}</div>`;
-  if (a.msg_en && a.msg_en !== a.msg_ro) msgBlocks += `<div class="msg-block" style="margin-top:8px">${esc(a.msg_en)}</div>`;
-  if (!msgBlocks) msgBlocks = `<div class="msg-block">${esc(a.msg || "—")}</div>`;
+  // Extracted-entity chips (real fields only)
+  const chips = [
+    a.risk_category && { v: a.risk_category, k: t("f_risk_category"), color: catColor(a.risk_category) },
+    a.meteo_color && { v: a.meteo_color, k: t("f_meteo_color") },
+    a.severitate && { v: a.severitate, k: t("f_severitate") },
+    a.localities && a.localities.length && { v: a.localities.length, k: t("ent_places") },
+    a.scope && { v: t(a.scope === "national" ? "scope_national" : "scope_county"), k: "scope" },
+    a.is_cancel && { v: t("status_cancel"), k: "lifecycle" },
+  ].filter(Boolean);
+  const chipsHtml = chips.map((c) =>
+    `<span class="ent-chip">${c.color ? `<span class="dot" style="background:${c.color}"></span>` : ""}<b>${esc(String(c.v))}</b><span class="ent-k">${esc(c.k)}</span></span>`
+  ).join("");
+
+  // Per-message RO/EN toggle (defaults to active UI language, falls back when missing)
+  const msgRo = a.msg_ro || a.msg || "";
+  const msgEn = a.msg_en && a.msg_en !== a.msg_ro ? a.msg_en : "";
+  const startLang = state.lang === "en" && msgEn ? "en" : "ro";
 
   document.getElementById("drawer-body").innerHTML = `
     <div class="drawer-title">${esc(a.title || a.risk_category)}</div>
     <div class="drawer-sub">${esc(a.judet || "")} · ${esc(a.initiator || "")} · ${fmtTime(a.sent_at)}</div>
     <div class="status-row">${statusBadge(a)} ${sevBadge(a.severitate)}</div>
-    <h3>${t("detail_message")}</h3>${msgBlocks}
-    ${a.localities && a.localities.length ? `<h3>${t("detail_localities")}</h3><div>${a.localities.map((l) => `<span class="pill">${esc(l)}</span>`).join("")}</div>` : ""}
-    ${a.poligoane ? `<h3>${t("detail_polygons")}</h3><div>${a.poligoane.split(",").map((p) => `<span class="pill">${esc(p.trim())}</span>`).join("")}</div>` : ""}
-    <h3>${t("detail_meta")}</h3>
-    <div class="meta-grid">${metaRows.map(([k, v]) => `<div class="mk">${t(k)}</div><div>${esc(v)}</div>`).join("")}</div>`;
+    ${chipsHtml ? `<div class="drawer-eyebrow">${t("drawer_entities")}</div><div class="drawer-chips">${chipsHtml}</div>` : ""}
+    <div class="drawer-cols">
+      <div class="drawer-col">
+        <div class="msg-head"><h3>${t("detail_message")}</h3>
+          <div class="msg-toggle">
+            <button class="mt-btn${startLang === "ro" ? " active" : ""}" data-lang="ro">RO</button>
+            <button class="mt-btn${startLang === "en" ? " active" : ""}" data-lang="en"${msgEn ? "" : " disabled"}>EN</button>
+          </div>
+        </div>
+        <div class="msg-block" id="drawer-msg">${esc(startLang === "en" ? msgEn : msgRo)}</div>
+        ${a.localities && a.localities.length ? `<h3>${t("detail_localities")}</h3><div>${a.localities.map((l) => `<span class="pill">${esc(l)}</span>`).join("")}</div>` : ""}
+        ${(() => { const extra = (a.locations || []).filter((l) => l.type !== "locality"); return extra.length ? `<h3>${t("detail_locations")}</h3><div class="loc-chips">${locChips(extra)}</div>` : ""; })()}
+        ${a.poligoane ? `<h3>${t("detail_polygons")}</h3><div>${a.poligoane.split(",").map((p) => `<span class="pill">${esc(p.trim())}</span>`).join("")}</div>` : ""}
+      </div>
+      <div class="drawer-col">
+        <h3>${t("detail_meta")}</h3>
+        <div class="meta-grid">${metaRows.map(([k, v]) => `<div class="mk">${t(k)}</div><div>${esc(v)}</div>`).join("")}</div>
+      </div>
+    </div>`;
+
+  // Wire message language toggle (in-place, no global re-render)
+  const msgEl = document.getElementById("drawer-msg");
+  document.querySelectorAll(".msg-toggle .mt-btn").forEach((b) => {
+    b.addEventListener("click", () => {
+      if (b.disabled) return;
+      document.querySelectorAll(".msg-toggle .mt-btn").forEach((x) => x.classList.toggle("active", x === b));
+      msgEl.textContent = b.dataset.lang === "en" ? (msgEn || msgRo) : msgRo;
+    });
+  });
 
   document.getElementById("drawer").classList.remove("hidden");
   document.getElementById("drawer-overlay").classList.remove("hidden");
