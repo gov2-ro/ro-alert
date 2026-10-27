@@ -5,7 +5,7 @@
 - [x] Count alerts, not delivery rows (April has one row per channel and retry; 470 rows
   are 237 alerts, 1 failed). Done on branch `feat/alert-unit`; brief `docs/briefs/alert-unit.md`.
   Measured: 3385 alerts, 3618 deliveries, 1 failed alert.
-- [ ] UI: the failure rate of 1 in 237 alerts shows as "0%" (whole-number rounding). Show one
+- [x] UI: the failure rate of 1 in 237 alerts shows as "0%" (whole-number rounding). Show one
   decimal below 10%, or the count.
 - [ ] Monthly timeline: add the official totals of the summary-only months (2025-09 286,
   2025-10 146, 2025-12 96, 2026-01 61), marked as official summary.

@@ -103,7 +103,7 @@ function renderSidebarStats(rows) {
   const sent = rows.filter((a) => a.status_ok === true).length;
   const err = rows.filter((a) => a.status_ok === false).length;
   const counties = new Set(rows.filter((a) => a.scope === "county").map((a) => a.judet)).size;
-  const rate = total ? Math.round((err / total) * 100) : 0;
+  const rate = pctRate(err, total);
   host.innerHTML = `
     <div class="sidebar-stat"><div class="sv">${total}</div><div class="sk">${t("kpi_total")}</div></div>
     <div class="sidebar-stat ok"><div class="sv">${sent}</div><div class="sk">${t("kpi_sent")}</div></div>

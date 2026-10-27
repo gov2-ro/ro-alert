@@ -51,7 +51,14 @@ function deliveryStats(rows) {
     }
   }
   if (!n) return null;
-  return { total, failed, rate: total ? Math.round((failed / total) * 100) : 0 };
+  return { total, failed, rate: pctRate(failed, total) };
+}
+
+/* Percentage for display: one decimal below 10%, so that 1 of 3385 does not read "0%". */
+function pctRate(part, total) {
+  if (!total) return 0;
+  const r = (part / total) * 100;
+  return r < 10 ? Math.round(r * 10) / 10 : Math.round(r);
 }
 
 /* KPI card for delivery failures; empty string when the selection has no reporting month. */

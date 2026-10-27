@@ -34,7 +34,10 @@ clone rebuilds without network. Raw downloads go to `repository/arhiva-ro-alert/
 The script detects the file shape by sheet names (S: summary only, R: summary + report,
 D: raw details), maps columns by header name and records each file in `sources/manifest.json`.
 Shape S files give a manifest entry and no rows. `build_data.py` reads every `sources/*.csv`
-in month order, gives each alert a stable string `id` and removes duplicate ids. It enriches
+in month order. One alert is one message, not one delivery row: rows with the same title,
+`Data creare` and `Tip mesaj` (April 2026: one row per channel and retry) become one alert
+with a `deliveries` list. `status_ok` is true when any delivery is SENT. Each alert has a
+stable string `id`; the build removes duplicate ids. It enriches
 each row offline and without an LLM:
 
 - `judet_for` maps the initiator code (`ISUPH`) or an `ISU XX` title tag to a county.

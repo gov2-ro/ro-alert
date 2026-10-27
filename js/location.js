@@ -82,7 +82,7 @@ function renderLocationKpis(rows) {
   const total = rows.length;
   const sent = rows.filter((a) => a.status_ok === true).length;
   const err = rows.filter((a) => a.status_ok === false).length;
-  const rate = total ? Math.round((err / total) * 100) : 0;
+  const rate = pctRate(err, total);
   host.innerHTML = `
     <div class="kpi"><div class="v">${total}</div><div class="k">${t("kpi_total")}</div></div>
     <div class="kpi ok"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>

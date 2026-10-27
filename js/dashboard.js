@@ -55,7 +55,7 @@ function renderDashboardKpis(rows) {
   const total = rows.length;
   const sent = rows.filter((a) => a.status_ok === true).length;
   const err = rows.filter((a) => a.status_ok === false).length;
-  const rate = total ? Math.round((err / total) * 100) : 0;
+  const rate = pctRate(err, total);
   const catM = countBy(rows, "risk_category");
   const topCat = [...catM.entries()].sort((a, b) => b[1] - a[1])[0];
   const missing = rows.filter((a) => a.risk_category === "Copil dispărut").length;
