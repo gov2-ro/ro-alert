@@ -149,7 +149,5 @@ function renderLocationFeed(rows) {
     for (const a of alerts) html += feedCardHtml(a);
   }
   host.innerHTML = html;
-  host.querySelectorAll(".feed-card").forEach((card) => {
-    card.addEventListener("click", () => openDrawer(card.dataset.id));
-  });
+  host.onclick = feedCardClick;
 }

@@ -1,5 +1,62 @@
 # Activity
 
+## 2026-10-27 — Audit phase 04: mobile and accessibility (branch `feat/audit-04-access`, Sonnet)
+
+**Done**
+- Phones (max 768 px): one document scroll; the sidebar becomes a labelled modal filter drawer (same
+  element and controls, no second state). A Filters button with an active-filter count and the polite
+  result count sit outside it, with the active strip (bounded to 34% of the viewport). Apply closes;
+  "Resetează filtrele" resets and leaves the drawer open; the close button has its own name.
+  Background is `inert`, Tab wraps, Escape closes, focus returns to the Filters button.
+- Header wraps at 320 px; the layout subtracts the measured header height (`--topbar-h`, ResizeObserver).
+  Feed summary stacks above the cards; cards use the content width. Grids use `minmax(0,1fr)`.
+- Record details are a native `<dialog>` (modal, named by its title, Escape, backdrop click, translated
+  close name). Focus returns to the opening button, or to the same record's new button after a rerender,
+  or to the main region. `update()` restores focus when a rerender removed the focused control.
+- Table: sort headers are buttons with `aria-sort`; each row has a record button (row click kept as a
+  mouse extra). Feed cards: a record button stretched over the card. Facet heads: `aria-expanded`;
+  toggles: `aria-pressed`; views: `aria-current`; labels for search, dates, language group.
+  Skip link, `<h1>`, `main` focus target. The skip link does not change the hash (the hash is app state).
+- Charts: `role=img` plus a name from the panel heading, and a collapsed "Date în tabel" disclosure with
+  the data (built on first open). Map: a list of counties and a searchable list of canonical places,
+  by keyboard, in a disclosure under the map. Sources stay on the Story view with zero results.
+- Readability: `--text-dim` #999 -> #66625a; muted, accent, error, ok, warn, cancel darkened to pass 4.5:1;
+  control border token 3:1+; focus ring 3 px; no text below 12 px, captions 14 px; targets 44 px on
+  phones. `prefers-reduced-motion` turns off CSS transitions, Chart.js animation and Leaflet zoom animation.
+- Tests: `tests/browser/access.cjs` (called by `smoke.cjs`); `axe-core` 4.10.2 as a development dependency.
+
+**Measured**
+- Document `scrollWidth <= clientWidth` at 1440, 1024, 800, 768, 720, 512, 390, 320 px, RO and EN, in
+  every view, in the Local view and with a record open (the dialog too).
+- Contrast, tokens: text 12.82/13.87 (bg/card); muted 5.55/6.01; dim 5.28/5.71; accent 5.57/6.03; error
+  5.71 on card; ok 5.73; warn 5.85; cancel 6.29; white on accent 6.41; control border 3.83/4.14; focus 6.90/7.47.
+  A computed-colour scan of every rendered text element (4 views + Local + record, RO and EN, 1440 and
+  390 px) finds none below 4.5:1 (3:1 large). Old state: `#999` on card 2.68.
+- axe-core (wcag2a/aa, 21a/aa, 22aa, best-practice) on 4 views at ro 1440, ro 390, en 320: 0 violations
+  after fixes. First run: heading-order in the Feed (h4 without h2), fixed.
+- Focus order (measured by Tab presses), 1440: skip link, Pe scurt, Dashboard, Tabel, Feed, Reset, RO, EN,
+  Consolă, Briefing, search, date parts, Resetează filtrele, facets. 390: the same header stops, then
+  Filters, the map, its two zoom buttons, the map-list summary, chart data disclosures, footer links.
+  A first run showed 41 county shapes and 1,300+ place points as Tab stops; they are now `tabindex=-1`.
+- Existing suites unchanged: 87 Python, 36 Node in UTC, Europe/Bucharest, America/New_York. No data change.
+
+**Hard**
+- Chrome keeps its sequential-focus start point after a programmatic focus; keyboard tests reset it by
+  focusing the skip link first. A native modal dialog lets Tab leave to the browser UI, so a Tab wrap was added.
+- The contrast scan read mid-transition colours (0.15 s on tabs); the scan now waits 250 ms.
+- A fullPage screenshot with an open modal dialog gave an unusable 794,000 px image; shots use the viewport.
+
+**Decided**
+- The filter drawer reuses the sidebar node (class `open`, role set at run time) instead of a `<dialog>`:
+  one set of controls and IDs, and the desktop sidebar stays a plain landmark. Cost of the alternative: a
+  duplicate control set or moving nodes between a dialog and the sidebar.
+- The record view is a native `<dialog>`: free inertness and Escape. Cost: a Tab wrap for the browser UI.
+- `--accent` moved from #2a6fc4 to #245fa8 (links and text on the beige background were 4.38:1). Chart
+  colours keep the earlier hues; they carry no text.
+- `axe-core` is a development-only dependency; the page loads no test code.
+- Views stay buttons inside `<nav>` with `aria-current`, not an ARIA tab pattern.
+- The disabled Local tab is not focusable; a county or place choice enables it.
+
 ## 2026-10-27 — Audit phase 03: shared state, places, and language (branch `feat/audit-03-state`, Sonnet)
 
 **Done**

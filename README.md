@@ -26,7 +26,9 @@ The tests need no network. Run them from the repository root.
   `playwright-core` and downloads no browser. Then run `node tests/browser/smoke.cjs`. The test
   uses the installed Google Chrome. Set `CHROME_PATH` when Chrome is in another place. Set
   `SHOTS=/some/folder` to save screenshots. The state, place, link and language checks (audit 03)
-  live in `tests/browser/state.cjs`; `smoke.cjs` runs them.
+  live in `tests/browser/state.cjs`; `smoke.cjs` runs them. The phone, keyboard, dialog, chart-table,
+  contrast and reduced-motion checks (audit 04) live in `tests/browser/access.cjs`. They also run an
+  `axe-core` scan (development dependency, installed by `npm install`). The full run takes about 10 minutes.
 
 ### Ingest workflow
 

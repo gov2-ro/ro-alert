@@ -10,9 +10,9 @@ function feedChipValues() {
 function renderFeed(rows, container) {
   container.innerHTML = `<div class="feed-view">
     <div class="filter-chips" id="feed-chips"></div>
-    <div style="display:flex;gap:20px">
-      <div id="feed-body" style="flex:1;min-width:0"></div>
-      <div class="feed-sidebar" id="feed-sidebar" style="width:240px;flex-shrink:0"></div>
+    <div class="feed-layout">
+      <div class="feed-sidebar" id="feed-sidebar"></div>
+      <div id="feed-body" class="feed-body"></div>
     </div>
   </div>`;
   buildFeedChips();
@@ -70,9 +70,13 @@ function renderFeedBody(rows) {
     }
   }
   host.innerHTML = html;
-  host.querySelectorAll(".feed-card").forEach((card) => {
-    card.addEventListener("click", () => openDrawer(card.dataset.id));
-  });
+  host.onclick = feedCardClick;
+}
+
+/* The card button gives keyboard access; a click anywhere on the card also opens the record. */
+function feedCardClick(e) {
+  const card = e.target.closest(".feed-card");
+  if (card) openDrawer(card.dataset.id, e.target);
 }
 
 function formatDateHeader(dateStr) {
@@ -83,11 +87,12 @@ function formatDateHeader(dateStr) {
 
 function feedCardHtml(a) {
   const msg = messageView(a, state.lang).text;
-  return `<div class="feed-card" data-id="${a.id}" style="border-left:4px solid ${catColor(a.risk_category)}">
+  const name = [catLabel(a.risk_category), a.title, fmtTime(a.sent_at)].filter(Boolean).join(", ");
+  return `<article class="feed-card" data-id="${esc(a.id)}" style="border-left:4px solid ${catColor(a.risk_category)}">
     <div class="feed-card-header">
       <span class="feed-card-sender">${esc(a.initiator || "—")}</span>
-      <span class="dot" style="background:${catColor(a.risk_category)}"></span>
-      <span class="feed-card-risk">${esc(catLabel(a.risk_category))}</span>
+      <span class="dot" style="background:${catColor(a.risk_category)}" aria-hidden="true"></span>
+      <button type="button" class="feed-card-risk card-open" data-open-id="${esc(a.id)}" aria-label="${esc(t("row_open").replace("%s", name))}">${esc(catLabel(a.risk_category))}</button>
       <span class="feed-card-county">${esc(a.judet || "")}</span>
     </div>
     <div class="feed-card-msg">${esc(msg)}</div>
@@ -97,7 +102,7 @@ function feedCardHtml(a) {
       ${sevBadge(a.severitate)}
       ${statusBadge(a)}
     </div>
-  </div>`;
+  </article>`;
 }
 
 function renderFeedSidebar(rows) {
@@ -111,9 +116,9 @@ function renderFeedSidebar(rows) {
   host.innerHTML = `
     <div class="feed-sidebar-row"><span>${t("sent_label")}</span><span class="sent">${sent}</span></div>
     <div class="feed-sidebar-row"><span>${t("failed_label")}</span><span class="failed">${failed}</span></div>
-    <div class="fail-text" style="margin-top:8px;color:var(--text-muted);font-size:12px">${failureLinesHtml(rows)}</div>
+    <div class="fail-text feed-fail">${failureLinesHtml(rows)}</div>
     <div class="feed-breakdown">
-      <h4>${t("feed_by_type")}</h4>
+      <h2>${t("feed_by_type")}</h2>
       ${breakdown}
     </div>`;
 }

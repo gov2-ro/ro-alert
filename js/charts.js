@@ -4,6 +4,8 @@
 Chart.defaults.color = "#6b6b6b";
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
 Chart.defaults.borderColor = "#ddd8cc";
+Chart.defaults.font.size = 12;
+if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) Chart.defaults.animation = false;
 
 /* The category palette, labels and catColor() live in filters.js (one palette for all views). */
 
@@ -40,7 +42,7 @@ function renderStackedTimelineChart(canvasId, rows) {
     data: { labels: d.labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 10 } } }, tooltip: { itemSort: (a, b) => b.raw - a.raw } },
+      plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 12 } } }, tooltip: { itemSort: (a, b) => b.raw - a.raw } },
       scales: {
         x: { stacked: true, ticks: { maxTicksLimit: 8 }, grid: { display: false } },
         y: { stacked: true, beginAtZero: true, grid: { color: "#e8e3d8" } },
@@ -106,7 +108,7 @@ function renderHourChart(canvasId, rows) {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { maxTicksLimit: 12, font: { size: 10 } }, grid: { display: false } },
+        x: { ticks: { maxTicksLimit: 12, font: { size: 12 } }, grid: { display: false } },
         y: { beginAtZero: true, grid: { color: "#e8e3d8" } },
       },
     },
@@ -137,6 +139,7 @@ function renderAuthorityChart(canvasId, rows) {
 function upsert(name, canvasId, cfg) {
   const el = document.getElementById(canvasId);
   if (!el) return;
+  describeChart(el, cfg);
   if (charts[name]) {
     charts[name].data = cfg.data;
     charts[name].options = cfg.options;
@@ -153,4 +156,39 @@ function destroyChart(name) {
 function destroyAllCharts() {
   Object.keys(charts).forEach((k) => { charts[k].destroy(); });
   for (const k in charts) delete charts[k];
+}
+
+/* ---- Text equivalent of a chart ----
+   The canvas gets a name from the panel heading. A collapsed disclosure after the chart holds
+   the same numbers as a table, so no one needs hover or the canvas. The table is built when
+   the disclosure first opens, to keep the DOM small. */
+function describeChart(canvas, cfg) {
+  const panel = canvas.closest(".panel");
+  const h = panel && panel.querySelector("h2");
+  const title = h ? h.textContent.trim() : canvas.id;
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", title);
+  const box = canvas.closest(".chart-box");
+  if (!box) return;
+  let det = box.nextElementSibling;
+  if (!det || !det.classList.contains("chart-data")) {
+    det = document.createElement("details");
+    det.className = "chart-data";
+    box.after(det);
+  }
+  det.innerHTML = `<summary>${esc(t("chart_data_show"))}</summary>`;
+  det.addEventListener("toggle", () => {
+    if (det.open && !det.querySelector("table")) det.insertAdjacentHTML("beforeend", chartTableHtml(title, cfg.data));
+  });
+}
+
+function chartTableHtml(title, data) {
+  const lab = (l) => esc(Array.isArray(l) ? l.join(" ") : l);
+  const sets = data.datasets.map((d) => d.label || t("chart_data_value"));
+  const rows = data.labels.map((l, i) =>
+    `<tr><th scope="row">${lab(l)}</th>${data.datasets.map((d) => `<td class="num">${d.data[i] == null ? "—" : esc(d.data[i])}</td>`).join("")}</tr>`).join("");
+  return `<div class="chart-data-scroll" tabindex="0" role="region" aria-label="${esc(t("chart_data_region") + ": " + title)}">
+    <table class="chart-table"><caption class="sr-only">${esc(title)}</caption>
+    <thead><tr><th scope="col">${esc(title)}</th>${sets.map((x) => `<th scope="col" class="num">${esc(x)}</th>`).join("")}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
 }

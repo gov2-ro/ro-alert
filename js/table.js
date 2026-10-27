@@ -6,7 +6,7 @@ const TABLE_MAX = 500;
 
 /* Column defs: i18n label, sort accessor, and cell HTML renderer. */
 const TABLE_COLS = [
-  { key: "time", label: "col_time", sort: (a) => a.sent_at || "", cell: (a) => `<span class="td-time">${fmtTime(a.sent_at)}</span>` },
+  { key: "time", label: "col_time", sort: (a) => a.sent_at || "", cell: (a) => `<button type="button" class="row-open td-time" data-open-id="${esc(a.id)}" aria-label="${esc(t("row_open").replace("%s", (a.title || (a.risk_category ? catLabel(a.risk_category) : "")) + ", " + fmtTime(a.sent_at)))}">${fmtTime(a.sent_at)}</button>` },
   { key: "judet", label: "col_judet", sort: (a) => a.judet || "", cell: (a) => esc(a.judet || "—") },
   { key: "risk", label: "col_risk", sort: (a) => a.risk_category || "", cell: (a) => `<span class="td-risk"><span class="dot" style="background:${catColor(a.risk_category)}"></span>${esc(a.risk_category ? catLabel(a.risk_category) : "—")}</span>` },
   { key: "code", label: "col_code", sort: (a) => a.meteo_color || "", cell: (a) => a.meteo_color ? `<span class="td-code">${esc(facetValueLabel("meteo_color", a.meteo_color))}</span>` : "—" },
@@ -39,8 +39,8 @@ function renderTable(rows, container) {
           <span class="badge error">${t("status_error")}</span>
         </span>
       </div>
-      <div class="table-scroll">
-        <table class="data-table"><thead id="table-head-row"></thead><tbody id="table-body"></tbody></table>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="${esc(t("table_region"))}">
+        <table class="data-table"><caption class="sr-only">${esc(t("table_caption"))}</caption><thead id="table-head-row"></thead><tbody id="table-body"></tbody></table>
       </div>
       <div class="table-note" id="table-note"></div>
     </section>`;
@@ -55,10 +55,12 @@ function renderTableHead() {
   if (!head) return;
   head.innerHTML = `<tr>${TABLE_COLS.map((c) => {
     const cur = tableSort();
-    const arrow = cur.key === c.key ? (cur.dir === "asc" ? "▲" : "▼") : "↕";
-    return `<th data-key="${c.key}">${t(c.label)} <span class="th-arrow">${arrow}</span></th>`;
+    const on = cur.key === c.key;
+    const arrow = on ? (cur.dir === "asc" ? "▲" : "▼") : "↕";
+    const aria = on ? ` aria-sort="${cur.dir === "asc" ? "ascending" : "descending"}"` : "";
+    return `<th scope="col" data-key="${c.key}"${aria}><button type="button" class="sort-btn" data-key="${c.key}" aria-label="${esc(t("sort_by").replace("%s", t(c.label)))}">${t(c.label)} <span class="th-arrow" aria-hidden="true">${arrow}</span></button></th>`;
   }).join("")}</tr>`;
-  head.querySelectorAll("th").forEach((th) => {
+  head.querySelectorAll(".sort-btn").forEach((th) => {
     th.addEventListener("click", () => {
       const key = th.dataset.key;
       const cur = tableSort();
@@ -69,6 +71,8 @@ function renderTableHead() {
       update("replace", { render: false });
       renderTableHead();
       renderTableBody();
+      const again = head.querySelector(`.sort-btn[data-key="${key}"]`);
+      if (again) again.focus();          // the header was rebuilt; keep the keyboard place
     });
   });
 }
@@ -91,8 +95,10 @@ function renderTableBody() {
     const cls = a.status_ok === false ? " err-row" : "";
     return `<tr class="data-row${cls}" data-id="${a.id}">${TABLE_COLS.map((c) => `<td>${c.cell(a)}</td>`).join("")}</tr>`;
   }).join("");
-  body.querySelectorAll(".data-row").forEach((tr) => {
-    tr.addEventListener("click", () => openDrawer(tr.dataset.id));
-  });
+  // One handler: the row button gives keyboard access; a click anywhere in the row also opens it.
+  body.onclick = (e) => {
+    const tr = e.target.closest(".data-row");
+    if (tr) openDrawer(tr.dataset.id, e.target);
+  };
   if (note) note.textContent = sorted.length > TABLE_MAX ? `${shown.length} / ${sorted.length} — ${t("table_more_note")}` : "";
 }

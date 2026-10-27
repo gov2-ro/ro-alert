@@ -6,7 +6,7 @@
 - [x] Phase 01: analytics correctness. Done on branch `feat/audit-01-analytics`. Brief: `docs/briefs/audit-01-analytics.md` (A01–A10).
 - [x] Phase 02: pipeline reliability. Done on branch `feat/audit-02-pipeline`. Brief: `docs/briefs/audit-02-pipeline.md` (P01–P11).
 - [x] Phase 03: shared state, places, and language. Done on branch `feat/audit-03-state`. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
-- [ ] Phase 04: mobile and accessibility. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
+- [x] Phase 04: mobile and accessibility. Done on branch `feat/audit-04-access`. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
 - [ ] Phase 05: visual and geographic architecture. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
 - [ ] Phase 06: browsing, export, and rendering. Brief: `docs/briefs/audit-06-browsing.md` (B01–B11).
 
@@ -30,7 +30,7 @@ The audit changed no application code or data. Items below need implementation a
   Europe/Bucharest produces March 29 twice and omits August 31. Chart stacks total 3,369,
   against 3,385 alerts; 16 alerts disappear. Use UTC calendar arithmetic. Check UTC,
   Europe/Bucharest, and America/New_York.
-- [ ] **P1 — Mobile controls and layout:** below 769 px, the sidebar disappears without a
+- [x] **P1 — Mobile controls and layout:** below 769 px, the sidebar disappears without a
   replacement. Search, dates, and facets become unavailable. At 390 px, the feed body is
   90 px wide beside a fixed 240 px summary. Navigation makes the document 407 px wide at
   both 390 px and 320 px. Add a filter drawer and stack the feed summary.
@@ -46,7 +46,7 @@ The audit changed no application code or data. Items below need implementation a
 - [x] **P2 — Place identity:** Local chips use extracted text; map points use resolved
   SIRUTA places. Harghita has 23 alerts with resolved Toplița, but no chip with that exact
   name. Use SIRUTA for selection and canonical display names. Keep text candidates distinct.
-- [ ] **P2 — Accessibility:** table rows, sort headers, and feed cards need keyboard actions.
+- [x] **P2 — Accessibility:** table rows, sort headers, and feed cards need keyboard actions.
   The detail drawer has no dialog role, focus transfer, or focus containment. Search and date
   inputs need explicit labels. Charts need text or table alternatives. The dim text token
   `#999` on `#faf8f1` has 2.68:1 contrast. Increase contrast for small text.
@@ -181,6 +181,16 @@ layer is *resolution* — turning candidates into validated places + coordinates
   build stays reproducible/offline. Persist a `{query -> result}` cache.
 - Optional: a local statistical NER pass (spaCy `ro_core_news_lg`) for the
   long tail of bare placemarks with no cue word.
+
+## Phase 04 follow-up
+
+- [ ] Phase 06: the Feed still renders every card; on a phone the page is long. Pagination (B-checks)
+  also shortens the mobile scroll. The Table keeps its 500-row cap.
+- [ ] Phase 05: the Leaflet map has no keyboard focus on county shapes; the list under the map is the
+  keyboard route. A map redesign may add focusable shapes.
+- [ ] Message text mixes Romanian and English; the drawer sets `lang` on its RO/EN buttons only, not on
+  each message block. Add `lang` per block when the build marks the split reliably.
+- [ ] Chart.js canvas labels and legends are not read by screen readers; each chart has a data table instead.
 
 ## Verified limits
 

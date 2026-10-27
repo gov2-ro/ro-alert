@@ -6,10 +6,17 @@ function renderDashboard(rows, container) {
     <div class="grid">
       <section class="panel map-panel">
         <h2 data-i18n="map_title">${t("map_title")}</h2>
-        <div id="map"></div>
+        <div id="map" role="group" aria-label="${esc(t("map_label"))}"></div>
         <div class="legend" id="map-legend"></div>
         <div class="map-hint" data-i18n="map_tap_hint">${t("map_tap_hint")}</div>
         <div class="map-hint" data-i18n="map_places_note">${t("map_places_note")}</div>
+        <details class="map-list" id="map-list"><summary>${esc(t("map_list_summary"))}</summary>
+          <h3 class="sub-h">${esc(t("map_list_counties"))}</h3>
+          <ul class="county-list" id="county-list"></ul>
+          <h3 class="sub-h">${esc(t("map_list_places"))}</h3>
+          <input type="search" id="map-place-filter" aria-label="${esc(t("map_list_filter"))}" placeholder="${esc(t("map_list_filter"))}" autocomplete="off">
+          <ul class="county-list" id="place-pick"></ul>
+        </details>
       </section>
       <section class="panel">
         <h2 data-i18n="timeline_title">${t("timeline_title")}</h2>
@@ -42,6 +49,7 @@ function renderDashboard(rows, container) {
   renderDashboardKpis(rows);
   if (!RoMap.map) initMap(DATA.geo);
   updateMap(rows, null);
+  renderMapList(rows);
   renderStackedTimelineChart("chart-timeline", rows);
   renderHazardChart("chart-hazard", rows);
   document.getElementById("fail-text").innerHTML = failureLinesHtml(rows);
@@ -63,4 +71,29 @@ function renderDashboardKpis(rows) {
     <div class="kpi"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>
     ${failureKpisHtml(rows)}
   `;
+}
+
+/* The map's equivalent for a keyboard: counties and canonical places as buttons. A county
+   button opens the Local view like a map click; a place button selects the place by SIRUTA. */
+function renderMapList(rows) {
+  const counties = new Map();
+  for (const a of rows) if (a.scope === "county" && a.judet) counties.set(a.judet, (counties.get(a.judet) || 0) + 1);
+  const list = document.getElementById("county-list");
+  list.innerHTML = [...counties.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([j, n]) => `<li><button type="button" class="map-pick" data-county="${esc(j)}">${esc(j)} <span class="locality-count">${n}</span></button></li>`).join("");
+  list.onclick = (e) => { const b = e.target.closest("[data-county]"); if (b) onCountyClick(b.dataset.county); };
+
+  const places = placeCounts(rows);
+  const host = document.getElementById("place-pick");
+  const input = document.getElementById("map-place-filter");
+  const draw = () => {
+    const q = normalizeSearch(input.value);
+    const hits = places.filter(([id]) => !q || normalizeSearch(placeLabel(id, true)).includes(q)).slice(0, 30);
+    host.innerHTML = hits.length
+      ? hits.map(([id, n]) => `<li><button type="button" class="map-pick" data-place="${id}">${esc(placeLabel(id, true))} <span class="locality-count">${n}</span></button></li>`).join("")
+      : `<li class="chart-cap">${esc(t("map_list_none"))}</li>`;
+  };
+  input.oninput = draw;
+  host.onclick = (e) => { const b = e.target.closest("[data-place]"); if (b) selectPlace(Number(b.dataset.place)); };
+  draw();
 }
