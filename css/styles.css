@@ -423,3 +423,23 @@ a { color: var(--accent); }
 .del-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .del-table th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 3px 8px 3px 0; }
 .del-table td { padding: 3px 8px 3px 0; border-top: 1px solid var(--border-light); }
+
+/* ===== Story view ("Pe scurt") ===== */
+.grid-2 { grid-template-columns: 1fr 1fr; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+.chart-cap { color: var(--text-dim); font-size: 11px; margin: 8px 0 0; line-height: 1.4; }
+.sub-h { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin: 14px 0 6px; }
+.chg-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.chg { border: 1px solid var(--border-light); border-radius: 6px; padding: 4px 6px; background: var(--bg); font-size: 11px; display: flex; flex-direction: column; }
+.chg-m { color: var(--text-dim); }
+.chg-v { font-weight: 700; }
+.chg.up .chg-v { color: var(--ok); }
+.chg.down .chg-v { color: var(--error); }
+.story-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.story-table th { text-align: left; color: var(--text-muted); font-weight: 600; padding: 3px 8px 3px 0; }
+.story-table td { padding: 4px 8px 4px 0; border-top: 1px solid var(--border-light); }
+.story-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.story-table .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.story-fail, .story-sources { margin-top: 16px; font-size: 13px; }
+.story-fail p, .story-sources p { margin: 6px 0; }
+.src-list { margin: 8px 0; padding-left: 18px; font-size: 12px; line-height: 1.7; }
