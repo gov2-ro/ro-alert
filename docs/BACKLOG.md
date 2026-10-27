@@ -1,5 +1,77 @@
 # Backlog
 
+## Audit implementation hand-off
+
+- [x] Prepare specs and implementation guidelines. Entry point: `docs/IMPLEMENTATION_HANDOFF.md`.
+- [ ] Phase 01: analytics correctness. Brief: `docs/briefs/audit-01-analytics.md` (A01–A10).
+- [ ] Phase 02: pipeline reliability. Brief: `docs/briefs/audit-02-pipeline.md` (P01–P11).
+- [ ] Phase 03: shared state, places, and language. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
+- [ ] Phase 04: mobile and accessibility. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
+- [ ] Phase 05: visual and geographic architecture. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
+- [ ] Phase 06: browsing, export, and rendering. Brief: `docs/briefs/audit-06-browsing.md` (B01–B11).
+
+These phase tasks track delivery. The audit items below retain the findings and measurements.
+Close an audit item only when all of its assigned work passes the brief's checks.
+
+## Project audit — 2026-10-27
+
+The audit changed no application code or data. Items below need implementation and review.
+
+- [ ] **P1 — Risk classification:** `risk_category` matches `urs` inside unrelated words.
+  Examples include `sursele`, `hours`, `downpours`, and `watercourses`. Found 48 suspect
+  animal classifications outside the source animal category, without a Romanian bear match.
+  These include 32 storm and 8 flood records. Use source risk fields first. Bound fallback
+  keywords to words. Add regression fixtures for these examples.
+- [ ] **P1 — Daily timeline:** local `setDate` changes a UTC-parsed date across summer time.
+  Europe/Bucharest produces March 29 twice and omits August 31. Chart stacks total 3,369,
+  against 3,385 alerts; 16 alerts disappear. Use UTC calendar arithmetic. Check UTC,
+  Europe/Bucharest, and America/New_York.
+- [ ] **P1 — Mobile controls and layout:** below 769 px, the sidebar disappears without a
+  replacement. Search, dates, and facets become unavailable. At 390 px, the feed body is
+  90 px wide beside a fixed 240 px summary. Navigation makes the document 407 px wide at
+  both 390 px and 320 px. Add a filter drawer and stack the feed summary.
+- [ ] **P1 — Coverage of failures:** the overview divides one failed alert by all 3,385
+  alerts. Only April reports failed deliveries. Scope the rate to reporting months and
+  show its denominator. Keep source SENT status separate from proof of device receipt.
+- [ ] **P2 — Workflow no-change path:** the month extraction pipeline exits 1 when ingest
+  prints `no new data`. Reproduced under Bash with `-e -o pipefail`. Handle an empty match
+  explicitly without hiding ingest failures. This is separate from the deferred VPS work.
+- [ ] **P2 — Filter state:** feed chips show All after selecting Meteo, although 583 rows
+  remain selected. `renderFeed` resets `feedChipFilter`. Derive the active chip from state.
+  Show active filters across views, including facets hidden by Briefing mode.
+- [ ] **P2 — Place identity:** Local chips use extracted text; map points use resolved
+  SIRUTA places. Harghita has 23 alerts with resolved Toplița, but no chip with that exact
+  name. Use SIRUTA for selection and canonical display names. Keep text candidates distinct.
+- [ ] **P2 — Accessibility:** table rows, sort headers, and feed cards need keyboard actions.
+  The detail drawer has no dialog role, focus transfer, or focus containment. Search and date
+  inputs need explicit labels. Charts need text or table alternatives. The dim text token
+  `#999` on `#faf8f1` has 2.68:1 contrast. Increase contrast for small text.
+- [ ] **P2 — Browse and share:** table truncates at 500 of 3,385 rows with no pagination.
+  Feed creates 3,385 cards and 48,923 DOM elements. Add pagination and filtered export.
+  Store view, filters, county, locality, and record id in the URL. Support browser Back.
+- [ ] **P2 — Pipeline validation:** add offline CI for workbook fixtures, delivery conservation,
+  unique ids, valid dates, supported statuses, and compact/restore parity. Fail on conflicting
+  duplicate ids. Stage CSV and manifest changes before replacing the current snapshot.
+- [ ] **P2 — Source revisions:** change detection uses only resource id and last_modified;
+  SHA-256 is recorded after download. Add periodic content checks and checked_at/fetched_at.
+  Define selection when multiple resources describe one month. Remove stale CSV data when
+  a month changes from detail to summary. Keep this separate from starting a VPS schedule.
+- [ ] **P2 — Geographic coverage:** 488 alerts are excluded from county fills as national.
+  These include 369 classified weather alerts. Show this count. Distinguish issuer county
+  from affected area. Document the combined București-Ilfov mapping onto București.
+- [ ] **P3 — Visual hierarchy:** separate county fills from locality points; 1,373 points
+  obscure the county map. Reduce repeated status KPIs. Move delivery diagnostics into a
+  coverage-labelled panel. Use neutral colours for changes in warning volume.
+- [ ] **P3 — Small architecture changes:** consolidate the two facet definitions and category
+  colours. Render once on language changes. Preserve map and chart instances on filtering.
+  Add a data schema version, build input hashes, and a visible load-error state.
+- [ ] **P3 — Language and provenance:** normalize diacritics for search and include resolved
+  place names. Translate derived category labels. Recognize English-only messages instead
+  of storing them as Romanian. Label source last_modified separately from last ingest.
+- [ ] **P3 — Build inputs and memory:** keep or document the source county geometry needed
+  to regenerate geo.js; it is currently ignored. Reconcile stale sizes and duplicate tasks
+  below. Current alerts.js is 4,531,815 bytes; gzip default level gives 466,525 bytes.
+
 ## Ingest
 
 - [x] Smaller data bundle. Brief: `docs/briefs/data-size.md`. Done on branch `feat/data-size`:

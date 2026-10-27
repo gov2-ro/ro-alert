@@ -1,5 +1,6 @@
 # Releases
 
+- v0.8.0 — 2026-10-27 — Project audit and implementation hand-off: six ordered briefs for analytics, pipeline reliability, shared state and places, mobile accessibility, visual architecture, and complete browsing. Named acceptance checks and implementation guidelines; no application changes.
 - v0.7.0 — 2026-10-27 — "Pe scurt" view (bear share, evening share, monthly change, bear and storm per month, top localities), timeline with official totals for summary-only months, Sources and method section.
 - v0.6.0 — 2026-10-27 — Compact data bundle (`alerts.js` 4.5 MB, 458 KB gzip; `geo.js` 251 KB). Localities from `Lista poligoane` via a Wikidata SIRUTA gazetteer (94.9% of mentions resolved), with a point layer on the map.
 - v0.5.0 — 2026-10-27 — Briefs: data size, localities from `Lista poligoane`, story view. Verified limit: GitHub-hosted runners cannot reach data.gov.ro.

@@ -1,5 +1,74 @@
 # Activity
 
+## 2026-10-27 — Audit implementation specs and hand-off
+
+**Done**
+- Added `docs/IMPLEMENTATION_HANDOFF.md` with the baseline, fixed decisions, order,
+  implementation guidelines, verification commands, and a copyable implementation prompt.
+- Added six briefs: analytics; pipeline; state/places/language; mobile/accessibility;
+  visual/geographic architecture; browsing/export/rendering. Each has named acceptance checks.
+- Linked every audit concern to an implementing phase and added phase tasks to BACKLOG.
+- Checked Markdown links, acceptance IDs, phase dependencies, and whitespace. No application
+  code or data changed. Implementation checks remain work for the implementing model.
+
+**Hard**
+- The audit found ERROR rows only in April. That does not establish complete reporting.
+  The specification distinguishes observed errors, unknown coverage, and summary-only sources.
+- Ignored workbooks and `/tmp` screenshots are available in this workspace only. The specs
+  require committed fixtures and tracked geometry for a fresh-clone offline check.
+
+**Decided**
+- Keep Dashboard as the landing view, the alert unit, accepted August warning, and current
+  summary visibility. Preserve the owner's deferral of VPS scheduling and deployment.
+- Authorize the listed schema and state additions explicitly. The implementing model can
+  proceed without treating historical brief restrictions as new approval requirements.
+- Use SIRUTA for resolved-place identity. A point selection must include nationally issued
+  records at that place; issuer county and affected locality remain different concepts.
+- Use JSON for the required filtered export. Defer CSV to avoid expanding this package.
+- Release this specification package as v0.8.0 under the repository's version rules.
+
+## 2026-10-27 — Pipeline, data, architecture, and UX audit
+
+**Done**
+- Read the pipeline, all current view modules, styles, workflow, briefs, and project memory.
+- Parsed all 11 cached workbooks offline. All seven detail CSV files match the parser output.
+  Their raw hashes match the manifest. All four summary breakdowns match the manifest.
+- Rebuilt in a temporary directory. alerts.js, meta.js, and geo.js match the committed files
+  byte for byte. Totals: 3,385 alerts; 3,618 deliveries; 196 ERROR deliveries; one failed
+  alert; 21 cancellations; zero duplicate ids removed.
+- Checked Chrome from file:// at 1440, 1024, 390, and 320 px. No JavaScript errors occurred.
+  Inspected screenshots of Dashboard, Pe scurt, and the mobile Feed. Checked filters, table,
+  drawer, county/locality selection, search, and English labels.
+- Recorded defects and opportunities in the audit section of BACKLOG.md. Application code
+  and data stay unchanged. Browser evidence is in /tmp/ro-alert-browser-results.json and
+  /tmp/ro-alert-*.png for this session.
+
+**Measured**
+- Daily chart in Europe/Bucharest: March 29 appears twice; August 31 is absent. Its stacks
+  count 3,369 alerts, losing 16. UTC has all 210 unique dates. America/New_York reproduces
+  the missing final day.
+- Classifier: 48 suspect animal classifications lack a Romanian bear match and a source
+  animal category. Examples match unrelated words containing `urs`, including English text.
+- Mobile: search and date controls are hidden; feed body is 90 px wide at a 390 px viewport.
+  Document width is 407 px at viewport widths 390 and 320.
+- Feed: 3,385 cards, 48,923 DOM elements. Meteo selects 583 rows but leaves All highlighted.
+  Table: 500 displayed rows, no next-page control, no keyboard-focusable record rows.
+- Gazetteer: 3,426 of 3,611 mentions resolved (94.9%); 131 ambiguous, 54 unmatched.
+  Only 1,392 of 3,385 alerts have a resolved place. Map has 1,373 distinct place points.
+- Current bundles: alerts.js 4,531,815 bytes; meta.js 34,304; geo.js 250,835.
+  Python gzip defaults give 466,525, 12,612, and 61,838 bytes respectively.
+
+**Hard**
+- Playwright's default Chromium build was absent. Installed Chrome worked after sandbox
+  approval. External requests were blocked during browser checks.
+- Did not query live CKAN, rerun the hosted Action, test the VPS, or inspect deployment.
+  The hosted-runner connection limit and VPS deferral remain the recorded owner decisions.
+
+**Decided**
+- Keep the static application and file:// requirement. Current evidence supports targeted
+  correctness, validation, state, and responsive-layout work. It does not justify a framework
+  migration or database. No application fixes, commits, tags, or deployments in this audit.
+
 ## 2026-10-27 — Review of the story-view branch (Opus)
 
 **Done**
