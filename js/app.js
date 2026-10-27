@@ -173,6 +173,8 @@ function render() {
 
   if (!currentRows.length) {
     main.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${t("no_results")}</p></div>`;
+  } else if (state.view === "story") {
+    renderStory(currentRows, main);
   } else if (state.view === "dashboard") {
     renderDashboard(currentRows, main);
   } else if (state.view === "table") {
