@@ -1,5 +1,41 @@
 # Activity
 
+## 2026-10-27 — Smaller data bundle (branch `feat/data-size`)
+
+**Done**
+- `build_data.py` writes a compact bundle: no `msg` (rebuilt from `msg_ro`, `msg_sep`,
+  `msg_en`), no `date`, `hour`, `weekday`, and no key with a null, empty-string or empty-list
+  value. The rule is generic (any key path, lists of objects included, e.g. `deliveries[].audienta`).
+  `meta.omitted` maps each omitted path to its empty value.
+- `js/data.js`: `restoreAlerts` puts everything back after load. No other `js/` file changed.
+- `data/geo.js`: coordinates rounded to 4 decimals; Douglas-Peucker per ring, tolerance 0.002
+  degrees (about 220 m), standard library only. All 42 counties stay.
+
+**Measured** (3385 alerts; gzip -9)
+- `alerts.js`: 7,200,209 B raw, 492,673 B gzip -> 4,299,413 B raw, 397,861 B gzip.
+- `geo.js`: 1,352,356 B raw, 280,447 B gzip -> 250,835 B raw, 61,741 B gzip. Points: 85,425 in the source.
+- `meta.js`: 30,366 -> 30,816 B raw (adds `omitted`).
+- Parity (Node, restore applied to the new bundle vs the old bundle, key order ignored): 0 of 3385 differ.
+- `msg` could be rebuilt for 3384 alerts; 1 alert keeps `msg` (it starts with a "." that the
+  split removes from `msg_ro`).
+- Headless Chrome from `file://`: 0 JS errors; 6 KPIs, table (500 rows shown), feed (3385 cards), drawer
+  from table and feed, facet filter, search ("urs" 2381 in EN), 42 map paths. Screenshots before and
+  after at default zoom look the same, and a 4x zoom shows no gap between counties.
+
+**Hard**
+- `msg` is not `msg_ro` + " " + `msg_en`. `split_bilingual` strips the separator (". ", " ", "",
+  ".", ...). 2334 of 3385 alerts differ with a plain space. Fix: store the separator as `msg_sep`
+  when it is not " ". Cost: about 3 bytes in 1700 alerts.
+- First parity run: 490 differences. Cause: `msg_sep` of "" was treated as an omittable empty value.
+  `msg` and `msg_sep` are now excluded from the omit rule.
+- The target `alerts.js` under 3.5 MB is not met: 4.30 MB. Remaining share: `msg_ro` 25%, `msg_en` 17%,
+  `deliveries` 9%, `locations` 8%. See BACKLOG.
+
+**Decided**
+- Each ring is simplified alone. Shared borders could gap, but the largest shift is the tolerance
+  (0.002 degrees), about 0.1 px at the default zoom; nothing shows at 4x zoom. The alternative
+  (shared arcs, topology-aware) costs about 60 more lines.
+
 ## 2026-10-27 — Data size, deploy path, next briefs
 
 **Done**

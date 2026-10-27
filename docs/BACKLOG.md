@@ -2,7 +2,13 @@
 
 ## Ingest
 
-- [ ] Smaller data bundle. Brief: `docs/briefs/data-size.md`.
+- [x] Smaller data bundle. Brief: `docs/briefs/data-size.md`. Done on branch `feat/data-size`:
+  `geo.js` 1.35 MB -> 251 KB; `alerts.js` 7.20 MB -> 4.30 MB (gzip 493 KB -> 398 KB).
+- [ ] `alerts.js` is still above the 3.5 MB target (4.30 MB). Candidates, measured on the
+  current bundle: key `type` in `locations` items (about 179 KB), `deliveries[].sent_at` equal to
+  the alert `sent_at` (about 115 KB), `localities` derivable from `locations` (about 98 KB). They
+  change the shape that the front end reads; the owner decides. Lowest cost: split `msg_en` into
+  a lazy file.
 - [ ] Localities from `Lista poligoane`, with a map layer. Brief: `docs/briefs/localities.md`.
 - [ ] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`.
 - [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
