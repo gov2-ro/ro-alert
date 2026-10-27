@@ -759,9 +759,11 @@ def main():
 
     # per-month figures; `reports_errors` comes from the ingest manifest
     reports = {}
+    manifest = []
     try:
         with open(os.path.join(SRC_DIR, "manifest.json"), encoding="utf-8") as mf:
-            reports = {m["month"]: bool(m.get("reports_errors")) for m in json.load(mf)}
+            manifest = json.load(mf)
+        reports = {m["month"]: bool(m.get("reports_errors")) for m in manifest}
     except (OSError, ValueError, KeyError):
         pass
     months = []
@@ -778,12 +780,37 @@ def main():
             "reports_errors": reports.get(key, derr > 0),
         })
 
+    # Summary-only months (manifest shape S): official total and risk breakdown, no alerts.
+    for m in manifest:
+        if m.get("shape") != "S" or not m.get("grand_total"):
+            continue
+        by_risk = collections.Counter()
+        for row in m.get("summary") or []:
+            by_risk[" ".join(_ascii(row[1]).split())] += row[2]
+        months.append({
+            "key": m["month"], "label": month_label(m["month"]),
+            "alerts": m["grand_total"], "official": True,
+            "by_risk": dict(by_risk),
+            "deliveries": None, "delivery_errors": None, "reports_errors": False,
+        })
+    months.sort(key=lambda x: x["key"])
+
+    # One line per source file, for the Sources section of the "Pe scurt" view.
+    sources = [{
+        "month": m["month"], "dataset": m["dataset"], "shape": m["shape"],
+        "rows": m.get("rows"), "grand_total": m.get("grand_total"),
+        "warnings": m.get("warnings") or [], "last_modified": m.get("last_modified"),
+    } for m in sorted(manifest, key=lambda x: x["month"])]
+    last_modified = max((m["last_modified"] for m in manifest if m.get("last_modified")), default=None)
+
     dates = [a["sent_at"] for a in alerts if a["sent_at"]]
     meta = {
         "total": len(alerts),
         "deliveries": sum(len(a["deliveries"]) for a in alerts),
         "delivery_error": sum(1 for a in alerts for d in a["deliveries"] if d["status"] == "ERROR"),
         "months": months,
+        "sources": sources,
+        "last_modified": last_modified,
         "sent": sum(1 for a in alerts if a["status_ok"] is True),
         "error": sum(1 for a in alerts if a["status_ok"] is False),
         "cancel": sum(1 for a in alerts if a["is_cancel"]),
