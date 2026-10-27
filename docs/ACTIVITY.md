@@ -1,5 +1,28 @@
 # Activity
 
+## 2026-10-27 — Review of the ingest; alert unit; related work
+
+**Done**
+- Reviewed the ingest branch against `docs/briefs/ckan-ingest.md`. Tests 2–6 passed. Test 1
+  failed: the brief's id key merged April's channel rows (3404 alerts, not 3618).
+- Changed the id key to one record per delivery row (channel, message type, status,
+  audience). Measured: 3618 alerts, sent=3422 error=196 cancel=41, 0 duplicates; Feb–Apr
+  parity with the old build. Checked the three pinned Action tags: they exist.
+- Read mariuscomper.uk/ro-alert. Notes: `docs/research/mariuscomper-ro-alert.md`.
+
+**Hard**
+- April rows are deliveries, not alerts: 470 rows, 216 groups by title + `Data creare`,
+  237 when ALERT and CANCEL stay apart; only 1 group has no SENT row. ERROR rows: STS 180,
+  CBC CMAS 16.
+
+**Decided**
+- Wrong turn (Opus): the brief's id rule assumed one row per alert. The hash of
+  title|sent_at|msg is not unique for April.
+- The delivery-row id is an interim fix: it keeps parity with the old build. The next
+  step counts alerts (`docs/briefs/alert-unit.md`). Cost of staying on delivery rows: April
+  counts about double, and the KPI shows 30% failed where 1 of 237 alerts failed.
+- The stopgap branch `data/may-aug-2026` is superseded: the ingest gives the same 3618 rows.
+
 ## 2026-10-27 — CKAN ingest built (branch `feat/ckan-ingest`)
 
 **Done**

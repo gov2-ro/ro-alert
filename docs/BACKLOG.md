@@ -2,6 +2,14 @@
 
 ## Ingest
 
+- [ ] Count alerts, not delivery rows (April has one row per channel and retry; 470 rows
+  are 237 alerts, 1 failed). Brief: `docs/briefs/alert-unit.md`. This replaces the
+  failure-rate UI item below.
+- [ ] Monthly timeline: add the official totals of the summary-only months (2025-09 286,
+  2025-10 146, 2025-12 96, 2026-01 61), marked as official summary.
+- [ ] Location resolution: resolve from `Lista poligoane` first. Target from
+  mariuscomper.uk: 94.8% of bear-alert locality mentions resolved without ambiguity.
+
 - [~] Automatic ingest from data.gov.ro (CKAN API → `sources/YYYY-MM.csv` → build), with a
   daily GitHub Action that opens a pull request. Brief: `docs/briefs/ckan-ingest.md`.
   Built on branch `feat/ckan-ingest`; waits for the owner's decision on the next item.
