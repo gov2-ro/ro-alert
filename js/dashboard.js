@@ -23,7 +23,7 @@ function renderDashboard(rows, container) {
     <div class="grid grid-3" style="margin-bottom:20px">
       <section class="panel">
         <h2 data-i18n="chart_reliability">${t("chart_reliability")}</h2>
-        <div class="chart-box"><canvas id="chart-reliability"></canvas></div>
+        <div class="fail-text" id="fail-text"></div>
       </section>
       <section class="panel">
         <h2 data-i18n="chart_hour">${t("chart_hour")}</h2>
@@ -44,7 +44,7 @@ function renderDashboard(rows, container) {
   updateMap(rows, null);
   renderStackedTimelineChart("chart-timeline", rows);
   renderHazardChart("chart-hazard", rows);
-  renderReliabilityChart("chart-reliability", rows);
+  document.getElementById("fail-text").innerHTML = failureLinesHtml(rows);
   renderTopCountiesChart("chart-topcounties", rows);
   renderHourChart("chart-hour", rows);
   renderAuthorityChart("chart-authority", rows);
@@ -55,18 +55,12 @@ function renderDashboardKpis(rows) {
   if (!host) return;
   const total = rows.length;
   const sent = rows.filter((a) => a.status_ok === true).length;
-  const err = rows.filter((a) => a.status_ok === false).length;
-  const rate = pctRate(err, total);
   const catM = countBy(rows, "risk_category");
   const topCat = [...catM.entries()].sort((a, b) => b[1] - a[1])[0];
-  const missing = rows.filter((a) => a.risk_category === "Copil dispărut").length;
-  const bear = rows.filter((a) => a.risk_category === "Animale periculoase").length;
   host.innerHTML = `
     <div class="kpi"><div class="v">${total}</div><div class="k">${t("kpi_total")}</div></div>
-    <div class="kpi accent"><div class="v">${bear || topCat ? (topCat ? topCat[1] : 0) : 0}</div><div class="k">${t("kpi_toprisk")}</div><div class="sub">${topCat ? topCat[0] : "—"}</div></div>
-    <div class="kpi err"><div class="v">${err}</div><div class="k">${t("kpi_failed")}</div></div>
-    <div class="kpi ${rate >= 25 ? "err" : "ok"}"><div class="v">${fmtPct(rate)}%</div><div class="k">${t("kpi_error_rate")}</div></div>
+    <div class="kpi accent"><div class="v">${topCat ? topCat[1] : 0}</div><div class="k">${t("kpi_toprisk")}</div><div class="sub">${topCat ? esc(topCat[0]) : "—"}</div></div>
     <div class="kpi"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>
-    ${deliveryKpiHtml(rows)}
+    ${failureKpisHtml(rows)}
   `;
 }

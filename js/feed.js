@@ -118,16 +118,13 @@ function renderFeedSidebar(rows) {
   if (!host) return;
   const sent = rows.filter((a) => a.status_ok === true).length;
   const failed = rows.filter((a) => a.status_ok === false).length;
-  const pct = rows.length ? Math.round((failed / rows.length) * 100) : 0;
   const catM = countBy(rows, "risk_category");
   const entries = [...catM.entries()].sort((a, b) => b[1] - a[1]);
   let breakdown = entries.map(([k, v]) => `<div class="feed-breakdown-item"><span>${esc(k)}</span><span>${v}</span></div>`).join("");
   host.innerHTML = `
     <div class="feed-sidebar-row"><span>${t("sent_label")}</span><span class="sent">${sent}</span></div>
     <div class="feed-sidebar-row"><span>${t("failed_label")}</span><span class="failed">${failed}</span></div>
-    <div style="margin-top:8px;color:var(--text-muted);font-size:12px">
-      ${pct}% ${t("kpi_error_rate").toLowerCase()}
-    </div>
+    <div class="fail-text" style="margin-top:8px;color:var(--text-muted);font-size:12px">${failureLinesHtml(rows)}</div>
     <div class="feed-breakdown">
       <h4>${t("feed_by_type")}</h4>
       ${breakdown}

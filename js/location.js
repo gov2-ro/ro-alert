@@ -34,7 +34,7 @@ function renderLocation(rows, county, container) {
       </section>
       <section class="panel">
         <h2 data-i18n="chart_reliability">${t("chart_reliability")}</h2>
-        <div class="chart-box"><canvas id="chart-loc-reliability"></canvas></div>
+        <div class="fail-text" id="loc-fail-text"></div>
       </section>
       <section class="panel">
         <h2 data-i18n="chart_by_type">${t("chart_by_type")}</h2>
@@ -45,9 +45,9 @@ function renderLocation(rows, county, container) {
   </div>`;
 
   renderLocationKpis(rows);
-  renderCountyTimelineChart("chart-loc-timeline", rows);
+  renderStackedTimelineChart("chart-loc-timeline", rows);
   renderHazardChart("chart-loc-hazard", rows);
-  renderReliabilityChart("chart-loc-reliability", rows);
+  document.getElementById("loc-fail-text").innerHTML = failureLinesHtml(rows);
   renderLocByTypeChart("chart-loc-bytype", rows);
   renderLocationFeed(rows);
 
@@ -79,16 +79,11 @@ function renderLocation(rows, county, container) {
 function renderLocationKpis(rows) {
   const host = document.getElementById("loc-kpis");
   if (!host) return;
-  const total = rows.length;
   const sent = rows.filter((a) => a.status_ok === true).length;
-  const err = rows.filter((a) => a.status_ok === false).length;
-  const rate = pctRate(err, total);
   host.innerHTML = `
-    <div class="kpi"><div class="v">${total}</div><div class="k">${t("kpi_total")}</div></div>
+    <div class="kpi"><div class="v">${rows.length}</div><div class="k">${t("kpi_total")}</div></div>
     <div class="kpi ok"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>
-    <div class="kpi err"><div class="v">${err}</div><div class="k">${t("kpi_failed")}</div></div>
-    <div class="kpi ${rate >= 25 ? "err" : "ok"}"><div class="v">${fmtPct(rate)}%</div><div class="k">${t("kpi_error_rate")}</div></div>
-    ${deliveryKpiHtml(rows)}
+    ${failureKpisHtml(rows)}
   `;
 }
 

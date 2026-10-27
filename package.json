@@ -1,0 +1,12 @@
+{
+  "name": "ro-alert-dev",
+  "private": true,
+  "description": "Development-only tools. The page loads none of these.",
+  "scripts": {
+    "test": "node --test tests/js/*.test.cjs",
+    "test:browser": "node tests/browser/smoke.cjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.49.1"
+  }
+}
