@@ -148,30 +148,55 @@ function failureCoverage(rows) {
   };
 }
 
-function failureSub(share, months) {
-  return t("fail_sample_sub").replace("%p", share.pct).replace("%m", esc(months));
+/* Replace %x tokens in a dictionary string. Tokens are lower-case letters ("%n", "%nat"). */
+function fill(str, vals) {
+  return String(str).replace(/%([a-z]+)/g, (m, k) => (k in vals ? vals[k] : m));
 }
 
-/* KPI cards for the failure figures: the observed count, then the sample shares
-   (or one card that says the coverage is unknown). */
-function failureKpisHtml(rows) {
-  const c = failureCoverage(rows);
-  const head = `<div class="kpi err"><div class="v">${c.observed}</div><div class="k">${t("kpi_failed")}</div><div class="sub">${t("fail_observed_sub")}</div></div>`;
-  if (!c.alerts) {
-    return head + `<div class="kpi"><div class="v">—</div><div class="k">${t("fail_unknown")}</div><div class="sub">${t("fail_unknown_sub")}</div></div>`;
-  }
-  return head +
-    `<div class="kpi"><div class="v">${c.alerts.text}</div><div class="k">${t("fail_sample_alerts")}</div><div class="sub">${failureSub(c.alerts, c.months)}</div></div>` +
-    `<div class="kpi"><div class="v">${c.deliveries.text}</div><div class="k">${t("fail_sample_deliv")}</div><div class="sub">${failureSub(c.deliveries, c.months)}</div></div>`;
+/* Number in the UI language: "3.385" in Romanian, "3,385" in English. */
+function fmtN(n) {
+  return Number(n).toLocaleString(state.lang === "en" ? "en-GB" : "ro-RO", { maximumFractionDigits: 0, useGrouping: true });
 }
 
-/* The same figures as short text lines, for panels that have no room for cards. */
-function failureLinesHtml(rows) {
+/* Percentage text for a share (0..100) or null: "41.1%" or "—". */
+function fmtShare(r) {
+  if (r == null) return "—";
+  return (Math.round(r * 10) / 10).toFixed(1) + "%";
+}
+
+/* The delivery-reporting section, drawn once per view. It states the observed failure count,
+   the reporting sample with its denominators, how many alerts fall outside that sample, one
+   short limit, and a disclosure with the longer method. */
+function qualityHtml(rows, opts = {}) {
   const c = failureCoverage(rows);
   const observed = `<p>${t("fail_observed_line").replace("%n", c.observed)}</p>`;
-  if (!c.alerts) return observed + `<p>${t("fail_unknown_line")}</p><p class="chart-cap">${t("fail_caveat")}</p>`;
-  const line = t("fail_sample_line").replace("%m", esc(c.months))
-    .replace("%a", c.alerts.text).replace("%ap", c.alerts.pct)
-    .replace("%d", c.deliveries.text).replace("%dp", c.deliveries.pct);
-  return `${observed}<p>${line}</p><p class="chart-cap">${t("fail_caveat")}</p>`;
+  const sample = c.alerts
+    ? `<p>${t("fail_sample_line").replace("%m", esc(c.months)).replace("%a", c.alerts.text).replace("%ap", c.alerts.pct)
+        .replace("%d", c.deliveries.text).replace("%dp", c.deliveries.pct)}</p>`
+    : `<p>${t("fail_unknown_line")}</p>`;
+  const unk = c.stats.unknownAlerts;
+  const unknown = `<p>${unk ? t("q_unknown").replace("%u", fmtN(unk)) : t("q_all_known")}</p>`;
+  return `<section class="panel quality" id="quality"><h2>${t("q_title")}</h2>
+    <div class="fail-text">${observed}${sample}${unknown}</div>
+    <p class="chart-cap">${t("q_limit")}</p>
+    <details class="q-details"><summary>${t("q_details")}</summary>
+      <p>${t("fail_caveat")}</p><p>${t("story_fail_note")}</p>
+      <p><button type="button" class="link-btn" data-goto-sources>${t("cov_method")}</button></p>
+    </details>
+  </section>`;
+}
+
+/* The coverage bar above every view: what the detail records cover, the current selection,
+   the source freshness (source modification apart from fetch time) and the method link. */
+function coverageHtml(selected) {
+  const m = DATA.meta;
+  if (!m || !m.date_min) return "";
+  const f = (iso) => monthName(+iso.slice(5, 7)).toLowerCase();
+  const y0 = m.date_min.slice(0, 4), y1 = m.date_max.slice(0, 4);
+  const period = y0 === y1 ? `${f(m.date_min)}–${f(m.date_max)} ${y1}` : `${f(m.date_min)} ${y0}–${f(m.date_max)} ${y1}`;
+  const fetched = (m.sources || []).map((s) => s.fetched_at).filter(Boolean).sort().pop();
+  return `<p class="cov-line">${esc(fill(t("cov_records"), { n: fmtN(m.total), p: period }))} ` +
+    `<b>${esc(fill(t("cov_selected"), { s: fmtN(selected), n: fmtN(m.total) }))}</b></p>` +
+    `<p class="cov-line cov-source">${esc(fill(t("cov_source"), { m: m.last_modified ? m.last_modified.slice(0, 10) : t("cov_unknown"), f: fetched ? fetched.slice(0, 10) : t("cov_unknown") }))} ` +
+    `${esc(t("cov_independent"))} <button type="button" class="link-btn" data-goto-sources>${t("cov_method")}</button></p>`;
 }

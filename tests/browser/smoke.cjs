@@ -89,30 +89,31 @@ async function view(page, name) {
     await page.evaluate(() => { state.dateFrom = null; state.dateTo = null; render(); });
 
     // A08/A09: Dashboard KPIs, all data.
-    const kpis = await page.innerText("#kpis");
+    const kpis = await page.innerText("#quality");
     check(`${tag} A08 Dashboard shows 1 / 237 and 196 / 470`, /1 \/ 237/.test(kpis) && /196 \/ 470/.test(kpis) && !/1 \/ 3385/.test(kpis));
+    // Phase 05: the sidebar keeps one result line; the diagnostics appear once, in the view.
     const side = await page.innerText("#sidebar-stats");
-    check(`${tag} A09 sidebar shows the same sample`, /1 \/ 237/.test(side) && /196 \/ 470/.test(side));
+    check(`${tag} A09 sidebar has the result count only, no duplicate diagnostics`, /3\.385 rezultate/.test(side) && !/\//.test(side));
     // May only: unknown coverage, no rate.
     await page.evaluate(() => { state.filters.month.add("Mai 2026"); render(); });
-    const may = await page.innerText("#kpis");
+    const may = await page.innerText("#quality");
     check(`${tag} A08 May shows unknown coverage, no failure rate`, /necunoscut/i.test(may) && !/0%/.test(may), may.replace(/\s+/g, " ").slice(0, 160));
     await page.evaluate(() => { state.filters.month.clear(); state.filters.month.add("Aprilie 2026"); render(); });
-    const apr = await page.innerText("#kpis");
+    const apr = await page.innerText("#quality");
     check(`${tag} A08 April shows 1 / 237`, /1 \/ 237/.test(apr) && /196 \/ 470/.test(apr));
     await page.evaluate(() => { state.filters.month.clear(); render(); });
 
     // Other views: Feed, Pe scurt, Local.
     await view(page, "feed");
     const feed = await page.innerText("#feed-sidebar");
-    check(`${tag} A09 Feed shows the sample`, /1 \/ 237/.test(feed) && /196 \/ 470/.test(feed));
+    check(`${tag} A09 Feed shows a compact summary and no second diagnostics report`, !/1 \/ 237/.test(feed) && /3\.385/.test(feed) && (await page.$("#quality")) === null);
     await view(page, "story");
-    const story = await page.innerText(".story-fail");
+    const story = await page.innerText("#quality");
     check(`${tag} A09 Pe scurt shows the sample`, /1 \/ 237/.test(story) && /196 \/ 470/.test(story));
     await page.evaluate(() => { state.selectedCounty = "Harghita"; state.view = "location"; document.querySelector('.view-tab[data-view="location"]').disabled = false; render(); });
     await page.waitForSelector("#loc-kpis .kpi");
-    const loc = await page.innerText("#loc-kpis");
-    check(`${tag} A09 Local shows the failure cards`, /Alerte eșuate observate/.test(loc));
+    const loc = await page.innerText("#quality");
+    check(`${tag} A09 Local shows the diagnostics once`, /Alerte eșuate observate/.test(loc) && (await page.$$("#quality")).length === 1);
     const locDaily = await page.evaluate(() => {
       const c = charts["chart-loc-timeline"];
       const bars = c.data.datasets.filter((d) => d.type !== "line");
@@ -141,14 +142,15 @@ async function view(page, name) {
       check(`[${lang} ${width}px] views render without JS errors`, errors.length === 0 && text.length > 500, errors.join(" | "));
       if (lang === "en") {
         await view(page, "dashboard");
-        const en = await page.innerText("#kpis");
-        check(`[en ${width}px] A09 EN coverage labels`, /Failed alerts in the reporting sample/.test(en) && /Observed failed alerts/.test(en));
+        const en = await page.innerText("#quality");
+        check(`[en ${width}px] A09 EN coverage labels`, /Reporting sample/.test(en) && /Observed failed alerts/.test(en));
       }
       await ctx.close();
     }
   }
 
   await require("./state.cjs")({ browser, check, URL, SHOTS });
+  await require("./visual.cjs")({ browser, check, URL, SHOTS });
   await require("./access.cjs")({ browser, check, URL, SHOTS, report: (m) => console.log("INFO  " + m) });
 
   await browser.close();

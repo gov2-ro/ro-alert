@@ -1,5 +1,53 @@
 # Activity
 
+## 2026-10-27 — Audit phase 05: visual hierarchy and geographic coverage (branch `feat/audit-05-visual`, Sonnet)
+
+**Done**
+- Reading order: a coverage bar above every view (outside the replaceable view) states the detail-record
+  coverage and period, the current selection, source modification apart from fetch time, that the site is an
+  independent archive and not a live service, and a "Sources and method" link. The link opens `Pe scurt`
+  at the Sources section; Back returns. The Feed keeps it in view over its 3,385 cards.
+- Dashboard: compact overview (selected alerts, dominant risk with share, issuing counties), map beside the
+  daily timeline (stacked under 1,280 px), risk, hour and issuer charts, top counties, then one reporting-quality
+  section. The failure-rate cards and the reliability doughnut-panel are gone. The sidebar KPI grid is one result line.
+- Map: labelled Counties / Localities control (default Counties; presentation only, not in the URL or any filter;
+  survives a filter change). County mode: fills by issuing county, no points. Locality mode: points over subdued
+  outlines, radius bounded (1.5 to 13.8 px) and follows the zoom. Legends give exact count ranges per colour
+  and say "within this selection"; the point legend shows sample sizes. Coverage text per mode and per selection;
+  the București-Ilfov convention, the issuer-county meaning and the national exclusion are visible text.
+  Tooltips of București and Ilfov say how the combined source counts.
+- Quality section (Dashboard, Pe scurt, Local; none in Feed): observed failed alerts, reporting sample with months
+  and denominators, the count of alerts outside the sample, one limit sentence, a disclosure with the longer method.
+- Charts: whole-number ticks on count axes (the Local daily chart showed 0.5), chart locale follows the UI
+  language, captions with period and denominator on every Dashboard and Local chart, month-over-month changes in neutral ink.
+- Local: "Issuing county" / "Resolved place" label above the heading, KPIs, charts, quality section, then records.
+- Tests: `tests/browser/visual.cjs` (86 checks, V01-V09), `tests/js/visual.test.cjs` (8), `Stats.mapCoverage`,
+  `Stats.dominant`, `selectionStats.unknownAlerts`. Existing checks A08/A09 and S06 now read the new places.
+
+**Measured**
+- No data change: 3,385 alerts, 3,618 deliveries, 196 ERROR rows, 1 failed alert, 21 CANCEL; `data/*.js` untouched.
+- Baseline coverage: county 2,897 / 3,385 (85.6%), national 488, unknown 0; places 1,392 / 3,385 (41.1%), 1,373 distinct
+  points, 3,415 alert-place pairs; mention resolution 3,426 / 3,611 (94.9%, whole archive). May 2026 + Meteo: coverage equals an
+  independent count. Unknown-coverage alerts (outside the ERROR-reporting month): 3,148.
+- Dashboard KPI grid: 6 cards (3,385, 2,337, 3,384, 1, 1/237, 196/470) -> 3 cards; failure figures appear once per view.
+- Tests: 87 Python, 44 Node (UTC, Europe/Bucharest, America/New_York), 401 browser checks (315 earlier + 86 new), no failure.
+- Screenshots inspected: Dashboard RO 1440 and 390, Dashboard places mode RO 1440, Dashboard EN 1440 (places), Pe scurt RO 1440
+  and EN 390, Local RO 1440, RO 320 and EN 390 (clipped), before/after of Dashboard and Local at 1440.
+
+**Hard**
+- Chart bars looked empty in screenshots taken 0.9 s after load (Chart.js animation); a 2.5 s wait shows them. Not a defect.
+- The Local view renders every record card; a full-page screenshot is 98,000 px tall (Phase 06 owns pagination).
+- `cap_type` first said "of 418 alerts"; only 30 Harghita alerts have a message type. The caption counts those 30.
+
+**Decided**
+- Map mode lives in `RoMap.mode`, not in `state` or the URL: the brief says a mode change must not change the data
+  selection. Cost: a shared link does not carry the mode.
+- Pe scurt loses its failed-alert KPI card: the quality section holds that count, and the brief wants it once per view.
+- The Feed shows no diagnostics, only a summary and the method link (brief: no second reliability report).
+- Exact count ranges in the county legend replace the earlier approximate stops; cost: up to six swatches.
+- Chart dates stay ISO; shortening them needs one format for tables and tooltips too (backlog).
+- Keyboard access to shapes stays the list under the map (backlog item closed with the reason).
+
 ## 2026-10-27 — Deploy script
 
 **Done**

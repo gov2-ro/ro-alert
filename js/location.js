@@ -25,6 +25,7 @@ function renderLocation(rows, container) {
   const top = counts.slice(0, PLACE_CHIPS_SHOWN);
   if (placeId != null && !top.some(([id]) => id === placeId)) top.push([placeId, counts.find(([id]) => id === placeId)?.[1] || 0]);
 
+  const dates = Stats.dailyCounts(rows).labels;
   const place = placeId != null ? DATA.places.get(placeId) : null;
   const title = place
     ? `${esc(place.name)}${place.county ? ` <span class="location-county-sub">· ${esc(place.county)}</span>` : ""}`
@@ -34,7 +35,10 @@ function renderLocation(rows, container) {
   container.innerHTML = `<div class="location-view">
     <div class="location-header">
       <button type="button" class="back-btn" id="loc-back-btn" data-i18n="location_back">${t("location_back")}</button>
-      <h2 class="location-county-name">${title} <span class="location-county-count">(${rows.length})</span></h2>
+      <div class="location-titlebox">
+        <div class="eyebrow">${t(place ? "loc_kind_place" : "loc_kind_county")}</div>
+        <h2 class="location-county-name">${title} <span class="location-county-count">(${fmtN(rows.length)})</span></h2>
+      </div>
       ${scopeNote}
     </div>
     ${top.length ? `<div class="place-block"><div class="eyebrow">${t("places_title")}</div>
@@ -44,25 +48,25 @@ function renderLocation(rows, container) {
         <div class="locality-chips place-list" id="place-list">${counts.map(([id, c]) => placeChipHtml(id, c)).join("")}</div>
       </details>` : ""}
     </div>` : `<p class="chart-cap">${t("places_none")}</p>`}
-    ${rows.length ? `<section class="kpis" id="loc-kpis"></section>
+    ${rows.length ? `<section class="kpis kpis-3" id="loc-kpis"></section>
     <div class="location-grid">
       <section class="panel">
         <h2 data-i18n="timeline_title">${t("timeline_title")}</h2>
         <div class="chart-box"><canvas id="chart-loc-timeline"></canvas></div>
+        <p class="chart-cap">${esc(fill(t("cap_timeline"), { a: dates[0] || "—", b: dates[dates.length - 1] || "—", n: fmtN(rows.length) }))}</p>
       </section>
       <section class="panel">
         <h2 data-i18n="by_category">${t("by_category")}</h2>
         <div class="chart-box"><canvas id="chart-loc-hazard"></canvas></div>
-      </section>
-      <section class="panel">
-        <h2 data-i18n="chart_reliability">${t("chart_reliability")}</h2>
-        <div class="fail-text" id="loc-fail-text"></div>
+        <p class="chart-cap">${esc(fill(t("cap_hazard"), { n: fmtN(rows.length) }))}</p>
       </section>
       <section class="panel">
         <h2 data-i18n="chart_by_type">${t("chart_by_type")}</h2>
         <div class="chart-box" id="loc-bytype"><canvas id="chart-loc-bytype"></canvas></div>
+        <p class="chart-cap">${esc(fill(t("cap_type"), { n: fmtN(rows.filter((a) => a.tip_mesaj).length) }))}</p>
       </section>
     </div>
+    ${qualityHtml(rows)}
     <div class="location-feed" id="location-feed"></div>` :
     `<div class="empty-state"><p>${placeId != null ? t("place_zero") : t("no_results")}</p>
        <button type="button" class="link-btn" id="empty-clear">${t("empty_clear")}</button></div>`}
@@ -72,7 +76,6 @@ function renderLocation(rows, container) {
     renderLocationKpis(rows);
     renderStackedTimelineChart("chart-loc-timeline", rows);
     renderHazardChart("chart-loc-hazard", rows);
-    document.getElementById("loc-fail-text").innerHTML = failureLinesHtml(rows);
     renderLocByTypeChart("chart-loc-bytype", rows);
     renderLocationFeed(rows);
   } else {
@@ -103,11 +106,12 @@ function renderLocation(rows, container) {
 function renderLocationKpis(rows) {
   const host = document.getElementById("loc-kpis");
   if (!host) return;
-  const sent = rows.filter((a) => a.status_ok === true).length;
+  const top = Stats.dominant(rows, "risk_category");
+  const cov = mapCoverage(rows);
   host.innerHTML = `
-    <div class="kpi"><div class="v">${rows.length}</div><div class="k">${t("kpi_total")}</div></div>
-    <div class="kpi ok"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>
-    ${failureKpisHtml(rows)}
+    <div class="kpi"><div class="v">${fmtN(rows.length)}</div><div class="k">${t("ov_selected")}</div></div>
+    <div class="kpi accent"><div class="v">${top ? fmtShare(top.share) : "—"}</div><div class="k">${t("kpi_toprisk")}</div><div class="sub">${top ? esc(catLabel(top.value)) + " · " + fmtN(top.n) + " " + t("legend_alerts") : "—"}</div></div>
+    <div class="kpi"><div class="v">${fmtN(cov.distinctPlaces)}</div><div class="k">${t("ov_places")}</div><div class="sub">${esc(fill(t("ov_places_sub"), { n: fmtN(cov.withPlace) }))}</div></div>
   `;
 }
 

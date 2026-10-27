@@ -67,7 +67,7 @@ const Stats = (function () {
       total: rows.length, failedAlerts: 0,
       reportingAlerts: 0, reportingFailedAlerts: 0,
       reportingDeliveries: 0, reportingErrorDeliveries: 0,
-      reportingMonths: [], unknownMonths: [],
+      reportingMonths: [], unknownMonths: [], unknownAlerts: 0,
     };
     const rep = new Set(), unk = new Set();
     for (const a of rows) {
@@ -83,6 +83,7 @@ const Stats = (function () {
         }
       } else {
         unk.add(m ? m.key : a.month);
+        s.unknownAlerts++;
       }
     }
     s.reportingMonths = [...rep].sort();
@@ -92,7 +93,38 @@ const Stats = (function () {
     return s;
   }
 
-  return { dayRange, dailyCounts, selectionStats, rate };
+  /* Map coverage for a selection. `isKnownCounty(a)` says whether an alert with county scope
+     lands on a county shape. Each alert counts once in exactly one of: county (drawn in
+     county mode), national (not drawn), unknown (county scope but no shape). `withPlace`
+     counts alerts with at least one resolved place; `placeMentions` counts alert-place pairs,
+     so it can exceed `withPlace`. Shares are null when the selection is empty. */
+  function mapCoverage(rows, isKnownCounty) {
+    const c = { total: rows.length, county: 0, national: 0, unknown: 0, withPlace: 0, placeMentions: 0, distinctPlaces: 0 };
+    const ids = new Set();
+    for (const a of rows) {
+      if (a.scope === "national") c.national++;
+      else if (a.scope === "county" && isKnownCounty(a)) c.county++;
+      else c.unknown++;
+      const pl = a.places || [];
+      if (pl.length) c.withPlace++;
+      for (const p of pl) { c.placeMentions++; ids.add(p.siruta); }
+    }
+    c.distinctPlaces = ids.size;
+    c.countyShare = rate(c.county, c.total);
+    c.placeShare = rate(c.withPlace, c.total);
+    return c;
+  }
+
+  /* The most frequent value of `key` and its share of all rows, or null for no rows. */
+  function dominant(rows, key) {
+    const m = new Map();
+    for (const a of rows) if (a[key]) m.set(a[key], (m.get(a[key]) || 0) + 1);
+    let best = null;
+    for (const [v, n] of m) if (!best || n > best.n || (n === best.n && String(v) < String(best.value))) best = { value: v, n };
+    return best ? { value: best.value, n: best.n, share: rate(best.n, rows.length) } : null;
+  }
+
+  return { dayRange, dailyCounts, selectionStats, mapCoverage, dominant, rate };
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = Stats;

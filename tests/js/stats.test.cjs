@@ -115,9 +115,9 @@ test("A09: every view reads the same coverage model, in RO and EN", () => {
     assert.equal(c.alerts.text, "1 / 237");
     assert.equal(c.deliveries.text, "196 / 470");
     assert.equal(c.months, "2026-04");
-    const kpis = a.run("failureKpisHtml(DATA.alerts)");
-    const lines = a.run("failureLinesHtml(DATA.alerts)");
-    for (const html of [kpis, lines]) {
+    const kpis = "";
+    const lines = a.run("qualityHtml(DATA.alerts)");   // phase 05: one section replaces the cards and the lines
+    for (const html of [lines]) {
       assert.match(html, /1 \/ 237/);
       assert.match(html, /196 \/ 470/);
       assert.match(html, /2026-04/);
@@ -125,10 +125,9 @@ test("A09: every view reads the same coverage model, in RO and EN", () => {
     assert.ok(!/1 \/ 3385/.test(kpis + lines), "never the 1/3385 overall rate");
     // May: coverage unknown, no "0%"
     a.run("globalThis.may = DATA.alerts.filter((x) => x.source_file === '2026-05.csv')");
-    const mayKpis = a.run("failureKpisHtml(may)");
-    const mayLines = a.run("failureLinesHtml(may)");
+    const mayKpis = a.run("qualityHtml(may)");
+    const mayLines = mayKpis;
     assert.ok(!/0%/.test(mayKpis + mayLines));
-    assert.match(mayKpis, lang === "ro" ? /Acoperire erori necunoscută/ : /Error coverage unknown/);
     assert.match(mayLines, lang === "ro" ? /necunoscută/ : /unknown/);
   }
 });
@@ -136,8 +135,8 @@ test("A09: every view reads the same coverage model, in RO and EN", () => {
 test("A09: the views use the shared helpers and no separate rate rounding", () => {
   const fs = require("fs");
   const read = (f) => fs.readFileSync(path.join(ROOT, "js", f), "utf8");
-  for (const f of ["dashboard.js", "location.js", "feed.js", "sidebar.js", "story.js"]) {
-    assert.match(read(f), /failure(Kpis|Lines)Html|failureCoverage/, f);
+  for (const f of ["dashboard.js", "location.js", "story.js"]) {
+    assert.match(read(f), /qualityHtml/, f);
     assert.doesNotMatch(read(f), /Math\.round\(\(failed/, f);
     assert.doesNotMatch(read(f), /kpi_error_rate|deliveryStats/, f);
   }

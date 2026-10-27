@@ -98,12 +98,10 @@ function storyCap(key) { return `<p class="chart-cap">${t(key)}</p>`; }
 function renderStory(rows, container) {
   const withOfficial = !hasActiveFilters(state);
   const S = storyStats(rows, withOfficial);
-  const failBody = `${failureLinesHtml(rows)}<p class="chart-cap">${t("story_fail_note")}</p>`;
 
   const changeCells = S.months.map((m) => {
     const lab = m.kind === "gap" ? t("story_no_file") : m.kind === "hidden" ? "—" : fmtChange(m.change);
-    const cls = m.change == null ? "" : m.change > 0 ? "up" : "down";
-    return `<div class="chg ${cls}"><span class="chg-m">${m.key}</span><span class="chg-v">${lab}</span></div>`;
+    return `<div class="chg"><span class="chg-m">${m.key}</span><span class="chg-v">${lab}</span></div>`;
   }).join("");
 
   const placeRows = S.topPlaces.map((p) =>
@@ -116,8 +114,6 @@ function renderStory(rows, container) {
         <div class="sub">${t("story_bear_sub").replace("%n", S.bearBase).replace("%b", S.bear)}${S.noRomanian ? " " + t("story_bear_noro").replace("%x", S.noRomanian) : ""}</div></div>
       <div class="kpi"><div class="v">${fmtPct(S.eveningPct)}%</div><div class="k">${t("story_evening_share")}</div>
         <div class="sub">${t("story_evening_sub").replace("%e", S.evening).replace("%n", S.withHour)}</div></div>
-      <div class="kpi err"><div class="v">${S.failedAlerts}</div><div class="k">${t("story_failed_alerts")}</div>
-        <div class="sub">${t("story_failed_sub")}</div></div>
     </section>
     <div class="grid grid-2">
       <section class="panel">
@@ -144,7 +140,7 @@ function renderStory(rows, container) {
         ${storyCap("story_places_cap")}
       </section>
     </div>
-    <section class="panel story-fail"><h2>${t("story_fail_title")}</h2>${failBody}</section>
+    ${qualityHtml(rows)}
     ${sourcesHtml()}`;
 
   renderStoryCharts(S, rows);
@@ -228,7 +224,7 @@ function sourcesHtml() {
   const have = new Set((m.months || []).map((x) => x.key));
   const gaps = storyMonthKeys().filter((k) => !have.has(k)).join(", ");
   const last = m.last_modified ? m.last_modified.slice(0, 10) : "—";
-  return `<section class="panel story-sources">
+  return `<section class="panel story-sources" id="sources-section" tabindex="-1">
     <h2>${t("sources_title")}</h2>
     <p>${t("sources_intro").replace("%l", lic)}</p>
     <ul class="src-list">${lines}</ul>

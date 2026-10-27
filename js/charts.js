@@ -5,6 +5,7 @@ Chart.defaults.color = "#6b6b6b";
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
 Chart.defaults.borderColor = "#ddd8cc";
 Chart.defaults.font.size = 12;
+Chart.defaults.scales.linear.ticks.precision = 0;       // counts are whole numbers: no 0.5 ticks
 if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) Chart.defaults.animation = false;
 
 /* The category palette, labels and catColor() live in filters.js (one palette for all views). */
@@ -139,6 +140,8 @@ function renderAuthorityChart(canvasId, rows) {
 function upsert(name, canvasId, cfg) {
   const el = document.getElementById(canvasId);
   if (!el) return;
+  cfg.options = cfg.options || {};
+  cfg.options.locale = state.lang === "en" ? "en-GB" : "ro-RO";   // one number format with the UI text
   describeChart(el, cfg);
   if (charts[name]) {
     charts[name].data = cfg.data;

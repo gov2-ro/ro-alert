@@ -147,6 +147,7 @@ module.exports = async function run({ browser, check, URL, SHOTS }) {
     // ---- S06: a point click keeps a nationally issued record; count equals the point ----
     {
       const { ctx, page, errors } = await openAt("", { lang });
+      await page.click('#map-mode [data-map-mode="places"]');       // phase 05: points exist in Localities mode only
       await page.evaluate(() => {
         const base = DATA.alerts.find((a) => (a.places || []).some((p) => p.siruta === 83641));
         DATA.alerts.push({ ...base, id: "synthetic-national", judet: "National", scope: "national", initiator: "IGSU" });

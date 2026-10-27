@@ -105,18 +105,20 @@ function feedCardHtml(a) {
   </article>`;
 }
 
+/* A compact summary of the selection. Delivery diagnostics are not repeated here: the coverage
+   bar above the view links to them and to the method. */
 function renderFeedSidebar(rows) {
   const host = document.getElementById("feed-sidebar");
   if (!host) return;
-  const sent = rows.filter((a) => a.status_ok === true).length;
-  const failed = rows.filter((a) => a.status_ok === false).length;
   const catM = countBy(rows, "risk_category");
   const entries = [...catM.entries()].sort((a, b) => b[1] - a[1]);
-  let breakdown = entries.map(([k, v]) => `<div class="feed-breakdown-item"><span>${esc(catLabel(k))}</span><span>${v}</span></div>`).join("");
+  const breakdown = entries.map(([k, v]) => `<div class="feed-breakdown-item"><span>${esc(catLabel(k))}</span><span>${fmtN(v)}</span></div>`).join("");
   host.innerHTML = `
-    <div class="feed-sidebar-row"><span>${t("sent_label")}</span><span class="sent">${sent}</span></div>
-    <div class="feed-sidebar-row"><span>${t("failed_label")}</span><span class="failed">${failed}</span></div>
-    <div class="fail-text feed-fail">${failureLinesHtml(rows)}</div>
+    <div class="feed-sum">
+      <h2>${t("feed_sum_title")}</h2>
+      <div class="feed-sum-n">${fmtN(rows.length)} <span>${t("legend_alerts")}</span></div>
+      <p class="chart-cap">${t("feed_sum_note")}<button type="button" class="link-btn" data-goto-sources>${t("cov_method")}</button></p>
+    </div>
     <div class="feed-breakdown">
       <h2>${t("feed_by_type")}</h2>
       ${breakdown}
