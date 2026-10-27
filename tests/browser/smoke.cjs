@@ -8,6 +8,7 @@
    shows as a console "Failed to load resource" line, which the test ignores. */
 "use strict";
 const fs = require("fs");
+const { useConsole } = require("./console-mode.cjs");
 const path = require("path");
 const { chromium } = require("playwright-core");
 
@@ -29,6 +30,7 @@ function check(name, ok, detail) {
 
 async function open(browser, tz, width, lang) {
   const ctx = await browser.newContext({ timezoneId: tz, viewport: { width, height: 900 } });
+  await useConsole(ctx);
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -59,6 +61,31 @@ async function view(page, name) {
 (async () => {
   if (!CHROME) throw new Error("No Chrome found. Set CHROME_PATH.");
   const browser = await chromium.launch({ executablePath: CHROME, headless: true });
+
+  // Defaults as a first visitor sees them (no useConsole here).
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await ctx.newPage();
+    await page.route("**/*", (r) => (r.request().url().startsWith("file://") ? r.continue() : r.abort()));
+    await page.goto(URL);
+    await page.waitForSelector("#kpis .kpi");
+    const d = await page.evaluate(() => ({
+      tabs: [...document.querySelectorAll("#view-tabs .view-tab")].map((b) => b.dataset.view),
+      current: document.querySelector('#view-tabs [aria-current="page"]')?.dataset.view,
+      modes: [...document.querySelectorAll(".stab")].map((b) => b.dataset.mode + ":" + b.getAttribute("aria-pressed")),
+      judetHidden: getComputedStyle(document.querySelector('#facets .facet[data-facet-field="judet"]')).display === "none",
+      footer: document.getElementById("site-footer").innerText,
+      gh: document.querySelector('#site-footer a[href="https://github.com/gov2-ro/ro-alert"]')?.getAttribute("aria-label"),
+      see: !!document.querySelector('#site-footer a[href="https://mariuscomper.uk/ro-alert/"]'),
+    }));
+    check("defaults: views ordered Dashboard, Pe scurt, Tabel, Feed, Local; Dashboard is open",
+      d.tabs.join() === "dashboard,story,table,feed,location" && d.current === "dashboard", JSON.stringify(d.tabs));
+    check("defaults: Briefing is the first sidebar mode and is active; Console-only facets are hidden",
+      d.modes.join() === "briefing:true,console:false" && d.judetHidden, JSON.stringify(d.modes));
+    check("defaults: footer has no Proof of Concept, has the GitHub icon link and the see-also link",
+      !/proof of concept/i.test(d.footer) && !!d.gh && d.see && /Vezi și/.test(d.footer), JSON.stringify(d));
+    await ctx.close();
+  }
 
   for (const tz of ZONES) {
     const { ctx, page, errors, external } = await open(browser, tz, 1440, "ro");

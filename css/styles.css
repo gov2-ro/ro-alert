@@ -359,10 +359,11 @@ html.lock-scroll, html:has(dialog[open]) { overflow: hidden; }
 }
 .site-footer a { color: var(--accent); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
-.site-footer mark {
-  background: var(--accent); color: #fff; padding: 1px 8px; border-radius: 4px;
-  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
+.site-footer .footer-gh {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  min-width: 24px; min-height: 24px; color: var(--text-muted);
 }
+.site-footer .footer-gh:hover { color: var(--text); }
 
 /* ===== 15. Console / Table View ===== */
 .table-panel { padding: 0; overflow: hidden; }

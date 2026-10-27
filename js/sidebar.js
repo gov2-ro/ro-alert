@@ -1,6 +1,6 @@
 /* Sidebar: filter sections, search, date range, stats. */
 
-let sidebarMode = "console"; // "console" | "briefing"
+let sidebarMode = "briefing"; // "briefing" (default) | "console"
 
 function buildSidebar() {
   buildDateRange();

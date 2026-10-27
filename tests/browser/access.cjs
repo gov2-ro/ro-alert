@@ -4,6 +4,7 @@
    establish compliance. */
 "use strict";
 const fs = require("fs");
+const { useConsole } = require("./console-mode.cjs");
 const path = require("path");
 
 const WIDTHS = [1440, 1024, 390, 320];
@@ -13,6 +14,7 @@ module.exports = async function run({ browser, check, URL, SHOTS, report }) {
   const log = report || (() => {});
   async function openAt(width, lang, hash0, opts = {}) {
     const ctx = await browser.newContext({ timezoneId: "Europe/Bucharest", viewport: { width, height: opts.height || 900 }, reducedMotion: opts.reducedMotion });
+    await useConsole(ctx);
     const page = await ctx.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));

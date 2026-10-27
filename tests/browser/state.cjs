@@ -4,6 +4,7 @@
    synthetic record (S06). */
 "use strict";
 const fs = require("fs");
+const { useConsole } = require("./console-mode.cjs");
 const path = require("path");
 
 const RO_CATEGORIES = ["Animale periculoase", "Copil dispărut", "Atac aerian / dronă", "Inundații", "Incendiu", "Tehnologic"];
@@ -13,6 +14,7 @@ module.exports = async function run({ browser, check, URL, SHOTS }) {
   async function openAt(hash0, { lang = "ro", width = 1440 } = {}) {
     let hash = hash0;
     const ctx = await browser.newContext({ timezoneId: "Europe/Bucharest", viewport: { width, height: 900 } });
+    await useConsole(ctx);
     const page = await ctx.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));

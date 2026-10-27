@@ -1,5 +1,25 @@
 # Activity
 
+## 2026-10-28 — Footer, view order, Briefing default (owner request)
+
+**Done**
+- Top navigation: Dashboard, Pe scurt, Tabel, Feed, Local. Dashboard stays the landing view.
+- Sidebar: "Briefing" is the first mode and the default. "Consolă" is second.
+- Footer: removed "Proof of Concept". Added "Vezi și / See also" with the link to
+  mariuscomper.uk/ro-alert and a GitHub icon link to gov2-ro/ro-alert (accessible name set).
+- Tests: `tests/browser/console-mode.cjs` switches a test context to "Consolă" after each load,
+  because the suites exercise Console-only facets. Three new checks in `smoke.cjs` open the page
+  without it and check the view order, the Briefing default and the footer links.
+
+**Measured**
+- Browser suite: 498 PASS, 0 FAIL. Python 87 OK. Node pass.
+- One earlier run had a single axe colour-contrast failure on Pe scurt at 390 px (2 nodes). Three
+  isolated scans and the next full run found none. Treated as flaky; see BACKLOG.
+
+**Decided**
+- Tests opt into "Consolă" instead of the app reading the mode from the URL. A URL key would change
+  the link schema for a test need.
+
 ## 2026-10-28 — Deploy script: remote home paths
 
 **Done**

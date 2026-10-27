@@ -4,6 +4,7 @@
    B11 is the whole suite plus the screenshots. */
 "use strict";
 const fs = require("fs");
+const { useConsole } = require("./console-mode.cjs");
 const http = require("http");
 const os = require("os");
 const path = require("path");
@@ -47,6 +48,7 @@ module.exports = async function run({ browser, check, URL, SHOTS }) {
   async function openAt(hash0, { lang = "ro", width = 1440, height = 900 } = {}) {
     let hash = hash0;
     const ctx = await browser.newContext({ timezoneId: "Europe/Bucharest", viewport: { width, height }, acceptDownloads: true });
+    await useConsole(ctx);
     const page = await ctx.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));

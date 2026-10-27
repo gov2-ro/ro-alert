@@ -95,6 +95,10 @@ The audit changed no application code or data. Items below need implementation a
 - [ ] Phase 03 follow-up: the Local view lists every resolved place in a disclosure, so the long
   list holds a second copy of the top chips. Phase 04 decides the keyboard and screen-reader form.
 
+- [ ] Flaky test: the axe scan in `tests/browser/access.cjs` once reported 2 colour-contrast nodes on
+  Pe scurt at 390 px (2026-10-28); not reproduced in 3 isolated scans and one full run. If it
+  recurs, log the node HTML and wait for chart and transition settling before the scan.
+
 ## Ingest
 
 - [x] Smaller data bundle. Brief: `docs/briefs/data-size.md`. Done on branch `feat/data-size`:
