@@ -1,5 +1,19 @@
 # Activity
 
+## 2026-10-27 — Review of the story-view branch (Opus)
+
+**Done**
+- Checked: a rebuild changes no file; all `js/` files parse; the "Pe scurt" tab renders from
+  `file://` (screenshot read). The Python check and the browser agree on every figure.
+- Fixed: the Sources section said "one row per delivery" for May and June. Only April has
+  more deliveries than alerts (470 against 237); the other shape-D months have one row per
+  alert. The label now follows `meta.months`, not the file shape.
+
+**Decided**
+- Keep Dashboard as the landing tab for now; the owner decides.
+- Feb–Jul gives 2,828 alerts here and 2,807 at mariuscomper.uk. The difference is April:
+  237 alerts here (ALERT and CANCEL apart), 216 there.
+
 ## 2026-10-27 — Timeline with official totals and "Pe scurt" view (branch `feat/story-view`)
 
 **Done**

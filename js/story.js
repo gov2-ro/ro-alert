@@ -204,7 +204,11 @@ function sourcesHtml() {
   const src = m.sources || [];
   const lic = `<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>`;
   const lines = src.map((s) => {
-    const shape = t("sources_shape_" + s.shape);
+    // Shape D is a raw export. Only a month with more deliveries than alerts (2026-04) has
+    // one row per delivery; the other shape-D months have one row per alert.
+    const mo = (m.months || []).find((x) => x.key === s.month);
+    const perDelivery = s.shape === "D" && mo && mo.deliveries > mo.alerts;
+    const shape = t("sources_shape_" + (s.shape === "D" && !perDelivery ? "R" : s.shape));
     const rows = s.shape === "S"
       ? `${t("sources_total")} ${s.grand_total}`
       : `${s.rows} ${t("sources_rows")}` + (s.grand_total != null && s.shape === "R" ? `, ${t("sources_total")} ${s.grand_total}` : "");
