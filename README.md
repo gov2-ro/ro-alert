@@ -16,7 +16,9 @@ Vezi și: [RO-ALERT, februarie–iulie 2026](https://mariuscomper.uk/ro-alert/) 
 
 The tests need no network. Run them from the repository root.
 
-- Python (standard library only): `python3 -m unittest discover -s tests -p 'test_*.py'`
+- Python: `python3 -m unittest discover -s tests -p 'test_*.py'`. The ingest tests need `xlrd` and
+  `openpyxl` (`pip install -r requirements.txt`) and skip without them. The fixture generator
+  `tests/fixtures/make_fixtures.py` also needs `xlwt`. Run it only to change fixtures; CI uses the committed files.
 - JavaScript without a browser (Node 20 or later): `node --test tests/js/*.test.cjs`
 - Time zone check: `TZ=UTC node --test tests/js/*.test.cjs`, then the same command with
   `TZ=Europe/Bucharest` and `TZ=America/New_York`.
@@ -24,6 +26,17 @@ The tests need no network. Run them from the repository root.
   `playwright-core` and downloads no browser. Then run `node tests/browser/smoke.cjs`. The test
   uses the installed Google Chrome. Set `CHROME_PATH` when Chrome is in another place. Set
   `SHOTS=/some/folder` to save screenshots.
+
+### Ingest workflow
+
+- `python ingest.py` stages every download, checks it, then commits `sources/` through a journal
+  (`sources/.ingest-txn`). An interrupted run is recovered at the start of the next run.
+  Exit code 0 means success or no change. Exit code 1 means a rejected file.
+- `--refresh` downloads again and compares content, even when `last_modified` is equal.
+  `--result PATH` writes the outcome as JSON.
+- When two resources describe one month with different bytes, ingest stops. Choose one resource
+  in `sources/resource_choices.json` (month -> resource id).
+- `.github/workflows/ci.yml` runs the offline tests and checks that a rebuild equals the tracked bundles.
 
 `python3 tools/risk_change_report.py OLD_ALERTS_JSON` compares two builds by alert ID and writes
 `data/risk_changes.csv` (ignored by Git).

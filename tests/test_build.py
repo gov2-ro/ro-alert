@@ -25,13 +25,14 @@ class BuildIsDeterministic(unittest.TestCase):
             shutil.copy(os.path.join(ROOT, "build_data.py"), tmp)
             shutil.copytree(os.path.join(ROOT, "sources"), os.path.join(tmp, "sources"))
             shutil.copytree(os.path.join(ROOT, "gazetteer"), os.path.join(tmp, "gazetteer"))
+            shutil.copytree(os.path.join(ROOT, "geometry"), os.path.join(tmp, "geometry"))
             runs = []
             for _ in range(2):
                 subprocess.run([sys.executable, "build_data.py"], cwd=tmp, check=True,
                                stdout=subprocess.DEVNULL)
-                runs.append({n: digest(os.path.join(tmp, "data", n)) for n in ("alerts.js", "meta.js")})
+                runs.append({n: digest(os.path.join(tmp, "data", n)) for n in ("alerts.js", "meta.js", "geo.js")})
             self.assertEqual(runs[0], runs[1])
-            for n in ("alerts.js", "meta.js"):
+            for n in ("alerts.js", "meta.js", "geo.js"):
                 self.assertEqual(runs[0][n], digest(os.path.join(ROOT, "data", n)),
                                  "%s differs from the tracked bundle: rebuild and commit" % n)
 

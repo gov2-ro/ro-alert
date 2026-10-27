@@ -24,6 +24,11 @@ There is no build tool and no linter. `ingest.py` needs `xlrd` and
 - Rebuild the data: `python3 build_data.py` (run from the repo root). The script reads every
   `sources/*.csv` and prints totals (sent / error / cancel, date range, county count) and the
   count of duplicates removed. Compare the totals with the previous run to detect a regression.
+- `ingest.py` stages, validates and commits through a journal (`sources/.ingest-txn`); it exits 1
+  on a rejected file. `--refresh` re-downloads, `--result PATH` writes JSON,
+  `sources/resource_choices.json` settles duplicate resources. `build_data.py` fails on bad
+  statuses, timestamps, conflicting ids and Grand Total mismatches, and records `schema_version`
+  and input hashes in `meta`. `.github/workflows/ci.yml` runs the offline tests.
 - A GitHub Action (`.github/workflows/ingest.yml`) runs both scripts daily and opens a pull
   request when `sources/` changes. A person reviews each new month before the merge.
 - Run the app: open `index.html` directly in a browser (`file://` works). A local server
@@ -53,7 +58,7 @@ each row offline and without an LLM:
 The script writes `data/alerts.json` and `data/meta.json` (facet counts, per-county counts,
 localities per county). It also writes the same objects as JS globals: `data/alerts.js`
 (`window.ALERTS`), `data/meta.js` (`window.META`) and `data/geo.js` (`window.GEO`, from
-`data/romania-counties.geojson`). Git tracks only the three `.js` bundles. Commit them
+`geometry/romania-counties.geojson`, a tracked input; source and licence unknown, see `geometry/PROVENANCE.md`). Git tracks only the three `.js` bundles. Commit them
 after each rebuild, because the deployed app reads only them.
 
 **Front end.** The app is plain browser JS with no modules and no bundler. Each file in

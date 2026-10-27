@@ -1,5 +1,35 @@
 # Activity
 
+## 2026-10-27 — Audit phase 02: pipeline reliability (branch `feat/audit-02-pipeline`, Sonnet)
+
+**Done**
+- `ingest.py`: staged, validated, journaled commit of `sources/`; recovery at the next run; exit 1 on
+  any rejection; paginated CKAN discovery; required headers; duplicate resources collapse by bytes or
+  fail with ids; `--refresh`, `--result`; revision kinds (detail_to_summary and others); `checked_at`
+  in an ignored status file; `fetched_at` only for new accepted content.
+- `build_data.py`: `build()` split from `main()`; fatal checks for manifest, statuses, timestamps,
+  conflicting ids, Grand Total, delivery conservation; zero summary totals kept; `meta.schema_version`,
+  `meta.inputs` (hashes), `sources[].fetched_at`. County geometry is now tracked in `geometry/`.
+- `tools/ci_ingest.sh`, `tools/ingest_report.py`, `ingest.yml` (PR only on real change), `ci.yml` (offline).
+- Tests: 74 Python (`test_ingest`, `test_sources`, `test_workflow`, `test_corpus`, `test_build`), 14 Node,
+  8 committed workbook fixtures, restore-parity check in Node.
+
+**Measured**
+- Corpus unchanged: 3,385 alerts, 3,618 deliveries, 196 ERROR rows, 1 failed alert, 21 CANCEL, 41 counties.
+- `alerts.js` (4,531,252 bytes) and `geo.js` (250,835) byte-identical to v0.9.0. `meta.js` 34,642 -> 35,928
+  bytes; the only changes are `schema_version`, `inputs`, and `fetched_at: null` on every source.
+- Two builds give identical bundles. Browser smoke test passes. Node tests pass in UTC, Los Angeles, Auckland.
+
+**Hard**
+- The disk filled during the work; the run stopped and resumed from a WIP commit.
+- A `status_ok` edit was at risk after ENOSPC; re-checked after the resume (UNKNOWN status is unknown, not failed).
+
+**Decided**
+- Staging and journal sit inside `sources/` (dot names, ignored) so a rename stays on one volume.
+  Cost of the alternative: a cross-device move is not atomic.
+- Legacy manifest entries keep `fetched_at` unset (null in meta). Inventing a date would be false.
+- The geometry licence is recorded as unknown; the owner must confirm it.
+
 ## 2026-10-27 — Audit phase 01: analytics correctness (branch `feat/audit-01-analytics`, Sonnet)
 
 **Done**

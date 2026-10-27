@@ -1,5 +1,6 @@
 name: ingest
 
+# Scheduled discovery. It needs data.gov.ro. The offline checks run in ci.yml.
 on:
   schedule:
     - cron: "0 6 * * *"
@@ -22,38 +23,30 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # ingest.py exits 0 on "no new data" and 1 on a failure. The script keeps both codes.
       - name: Ingest new months from data.gov.ro
         id: ingest
-        run: |
-          set -o pipefail
-          python3 ingest.py | tee ingest.log
-          months=$(sed -n 's/^new: //p' ingest.log | grep -o '20[0-9][0-9]-[0-9][0-9]' | sort -u | paste -sd, - | sed 's/,/, /g')
-          echo "months=${months}" >> "$GITHUB_OUTPUT"
-          {
-            echo "body<<EOF_BODY"
-            echo "New months: ${months:-none}."
-            echo
-            echo "Manifest warnings:"
-            python3 - <<'PY'
-          import json
-          warns = [(e["month"], w) for e in json.load(open("sources/manifest.json")) for w in e["warnings"]]
-          print("\n".join("- %s: %s" % x for x in warns) if warns else "- none")
-          PY
-            echo
-            echo "A person must review each new month before the merge."
-            echo "EOF_BODY"
-          } >> "$GITHUB_OUTPUT"
+        run: bash tools/ci_ingest.sh
 
       - name: Rebuild dashboard data
         run: python3 build_data.py
 
+      - name: Detect publishable changes
+        id: diff
+        run: |
+          if [ -n "$(git status --porcelain -- sources data/alerts.js data/meta.js data/geo.js)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Open pull request
-        if: steps.ingest.outputs.months != ''
+        if: steps.diff.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7.0.8
         with:
           branch: data/ro-alert-ingest
-          title: "data: RO-ALERT ${{ steps.ingest.outputs.months }}"
-          commit-message: "data: RO-ALERT ${{ steps.ingest.outputs.months }}"
+          title: "data: RO-ALERT ${{ steps.ingest.outputs.months || 'rebuild' }}"
+          commit-message: "data: RO-ALERT ${{ steps.ingest.outputs.months || 'rebuild' }}"
           body: ${{ steps.ingest.outputs.body }}
           add-paths: |
             sources/
