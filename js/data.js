@@ -13,26 +13,103 @@ function countyKey(name) {
   return s;
 }
 
-/* Data is embedded as JS globals (window.ALERTS / META / GEO) via the
-   data/*.js bundles, so the app runs straight from the filesystem (file://)
-   with no server. Falls back to fetching the JSON if the globals are absent. */
-async function loadData() {
-  if (window.ALERTS && window.META && window.GEO) {
-    DATA.alerts = window.ALERTS;
-    DATA.meta = window.META;
-    DATA.geo = window.GEO;
-    restoreAlerts(DATA.alerts, DATA.meta.omitted);
-    indexPlaces(DATA.alerts);
-    return DATA;
+/* A failure the page can explain. `userMessage` is a plain sentence for the error screen;
+   `detail` is the technical line. js/boot.js shows both with a Retry button. */
+class DataError extends Error {
+  constructor(userMessage, detail) {
+    super(detail || userMessage);
+    this.name = "DataError";
+    this.userMessage = userMessage;
+    this.detail = detail || userMessage;
   }
-  const [alerts, meta, geo] = await Promise.all([
-    fetch("data/alerts.json").then((r) => r.json()),
-    fetch("data/meta.json").then((r) => r.json()),
-    fetch("data/romania-counties.geojson").then((r) => r.json()),
-  ]);
-  DATA.alerts = alerts;
-  DATA.meta = meta;
-  DATA.geo = geo;
+}
+
+const DATA_SCHEMA_SUPPORTED = [1];
+/* The three data files. `global` is the name the bundle defines; `json` is the fallback copy. */
+const DATA_BUNDLES = [
+  { global: "ALERTS", file: "data/alerts.js", json: "data/alerts.json" },
+  { global: "META", file: "data/meta.js", json: "data/meta.json" },
+  { global: "GEO", file: "data/geo.js", json: "data/romania-counties.geojson" },
+];
+
+function dataText(ro, en) {
+  const lang = (typeof RoBoot !== "undefined" && RoBoot.lang) ? RoBoot.lang() : "ro";
+  return lang === "en" ? en : ro;
+}
+
+/* Check the shape that the page needs before it restores or draws anything. Throws a DataError. */
+function validateData(alerts, meta, geo) {
+  const bad = (ro, en, detail) => { throw new DataError(dataText(ro, en), detail || en); };
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) {
+    bad("Fișierul data/meta.js nu are forma așteptată.", "The file data/meta.js does not have the expected shape.", "META is not an object");
+  }
+  if (!DATA_SCHEMA_SUPPORTED.includes(meta.schema_version)) {
+    bad(`Datele folosesc schema ${meta.schema_version}, iar această pagină citește schema ${DATA_SCHEMA_SUPPORTED.join(", ")}. Pagina și datele nu provin din aceeași versiune.`,
+      `The data uses schema ${meta.schema_version}, and this page reads schema ${DATA_SCHEMA_SUPPORTED.join(", ")}. The page and the data are not from the same version.`,
+      `unsupported schema_version ${meta.schema_version}`);
+  }
+  if (!Array.isArray(alerts)) {
+    bad("Fișierul data/alerts.js nu conține o listă de alerte.", "The file data/alerts.js does not hold a list of alerts.", "ALERTS is not an array");
+  }
+  if (!alerts.length) {
+    bad("Fișierul data/alerts.js nu conține nicio alertă. Pagina nu înlocuiește acest lucru cu o arhivă goală.",
+      "The file data/alerts.js holds no alert. The page does not replace this with an empty archive.", "ALERTS is empty");
+  }
+  const badRow = alerts.findIndex((a) => !a || typeof a !== "object" || typeof a.id !== "string");
+  if (badRow >= 0) {
+    bad(`Alerta ${badRow + 1} din data/alerts.js nu are un identificator valid.`, `Alert ${badRow + 1} in data/alerts.js has no valid id.`, `invalid record at index ${badRow}`);
+  }
+  if (meta.total !== alerts.length || !Array.isArray(meta.months) || !meta.facets || typeof meta.facets !== "object" || !meta.judet_counts) {
+    bad("Fișierele data/meta.js și data/alerts.js nu se potrivesc (număr de alerte sau câmpuri lipsă).",
+      "The files data/meta.js and data/alerts.js do not match (alert count or missing fields).",
+      `meta.total=${meta.total}, alerts=${alerts.length}`);
+  }
+  if (!geo || !Array.isArray(geo.features) || !geo.features.length) {
+    bad("Fișierul data/geo.js nu conține conturul județelor.", "The file data/geo.js holds no county outlines.", "GEO has no features");
+  }
+}
+
+/* Why a bundle is absent, from what boot.js saw. */
+function bundleProblem(b) {
+  const seen = (typeof RoBoot !== "undefined" ? RoBoot.failedScripts : []).find((f) => f.src === b.file);
+  if (seen && seen.message !== "not loaded") {
+    return { ro: `Fișierul ${b.file} are o eroare și nu s-a încărcat.`, en: `The file ${b.file} has an error and did not load.`, detail: `${b.file}: ${seen.message}` };
+  }
+  return { ro: `Fișierul ${b.file} lipsește sau nu s-a încărcat.`, en: `The file ${b.file} is missing or did not load.`, detail: `${b.file} not loaded` };
+}
+
+/* Read the copy of a missing bundle from its JSON file, where the server provides it. */
+async function fetchBundle(b) {
+  const p = bundleProblem(b);
+  let r;
+  try {
+    r = await fetch(b.json);
+  } catch (e) {
+    throw new DataError(dataText(`${p.ro} Copia ${b.json} nu poate fi citită (din fișier local, browserul blochează citirea).`, `${p.en} The copy ${b.json} cannot be read (from a local file, the browser blocks reading).`), `${p.detail}; fetch ${b.json}: ${e && e.message}`);
+  }
+  if (!r.ok) {
+    throw new DataError(dataText(`${p.ro} Copia ${b.json} nu există pe server (HTTP ${r.status}).`, `${p.en} The copy ${b.json} is not on the server (HTTP ${r.status}).`), `${p.detail}; ${b.json}: HTTP ${r.status}`);
+  }
+  try {
+    return await r.json();
+  } catch (e) {
+    throw new DataError(dataText(`Copia ${b.json} nu este JSON valid.`, `The copy ${b.json} is not valid JSON.`), `${b.json}: ${e && e.message}`);
+  }
+}
+
+/* Data is embedded as JS globals (window.ALERTS / META / GEO) via the data/*.js bundles, so
+   the app runs straight from the filesystem (file://) with no server. A bundle that is absent
+   is read from its JSON copy when the server has one; otherwise the error says which file is
+   missing. The shape is checked before anything is restored. */
+async function loadData() {
+  const got = {};
+  for (const b of DATA_BUNDLES) {
+    got[b.global] = window[b.global] !== undefined ? window[b.global] : await fetchBundle(b);
+  }
+  validateData(got.ALERTS, got.META, got.GEO);
+  DATA.alerts = got.ALERTS;
+  DATA.meta = got.META;
+  DATA.geo = got.GEO;
   restoreAlerts(DATA.alerts, DATA.meta.omitted);
   indexPlaces(DATA.alerts);
   return DATA;

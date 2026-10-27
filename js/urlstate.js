@@ -10,6 +10,7 @@ const URL_SCHEMA = 1;
 const URL_VIEWS = ["story", "dashboard", "table", "feed", "location"];
 const URL_LANGS = ["ro", "en"];
 const DEFAULT_SORT = { key: "time", dir: "desc" };
+const URL_PAGED_VIEWS = ["table", "feed", "location"];      // the views that list records in pages
 
 function newState() {
   const filters = {};
@@ -20,7 +21,7 @@ function newState() {
     selectedPlaceId: null,     // integer SIRUTA code of a resolved place
     record: null,              // id of the open alert
     sort: null,                // {key, dir} for the Table; null = DEFAULT_SORT
-    page: 1,                   // page number (Phase 06 paginates; the key is kept now)
+    page: 1,                   // page number of the Table, Feed and Local record lists (50 per page)
   };
 }
 
@@ -42,8 +43,15 @@ function normalizeState(st, ctx) {
   if (st.view !== "location") { st.selectedCounty = null; st.selectedPlaceId = null; }
   if (!(st.page >= 1)) st.page = 1;
   st.page = Math.floor(st.page);
+  if (!URL_PAGED_VIEWS.includes(st.view)) st.page = 1;
   if (st.view !== "table") st.sort = null;
   return st;
+}
+
+/* A string that changes when the selection or its order changes, and only then. The page, the
+   open record and the language are not part of it. A change of this string resets the page. */
+function selectionKey(st) {
+  return encodeState(Object.assign({}, st, { page: 1, record: null, lang: "ro" }));
 }
 
 /* The canonical hash (without "#") for a state. Equal selections give equal strings. */

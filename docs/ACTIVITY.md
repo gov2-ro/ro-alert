@@ -1,5 +1,56 @@
 # Activity
 
+## 2026-10-27 — Audit phase 06: browsing, export and rendering (branch `feat/audit-06-browsing`, Sonnet)
+
+**Done**
+- Pages: Table, Feed and the Local record list show 50 records per page (`js/browse.js`). The complete selection
+  is sorted first (key, then id ascending), then sliced. A pager (range "51–100 of 3,385", "Page 2 of 68",
+  labelled Previous/Next) sits above and below each list. A page change is a history entry (`page` key), moves
+  focus to the list heading and shows its start. An out-of-range page shows the last page, and the URL says so.
+  `selectionKey()` in `urlstate.js` resets the page to 1 whenever the selection or sort changes, in one place.
+- Feed and Local group dates inside the page; a day that continues says "N of M alerts on this day".
+- Export: "Export selection (JSON)" in Table and Feed. One UTF-8 file with `schema_version`, `exported_at`,
+  `selection`, `sources`, `attribution`, `coverage`, `records` (all selected alerts, deliveries, original text).
+  Blob and object URL, revoked after 30 s. Zero results: the button stays, disabled, with the reason.
+- Lifecycle: each view has `mountX` / `updateX` (`VIEW_PARTS` in `app.js`). Dashboard, Table, Feed and Local keep
+  their shell; charts update through `upsert()`, the map keeps its instance and zoom. Leaving the view or an empty
+  selection destroys them. `describeChart` no longer adds a listener per update and refreshes an open table.
+  New "Fit selection" map button. Page change redraws only the list (`listOnly`).
+- Load errors: `js/boot.js` (first script) shows a loading text, then a plain-language error with Retry (reload keeps
+  the URL hash) for a missing page script, a missing or broken data bundle, an unsupported schema, bad shape, empty
+  list, and a failed or malformed JSON fallback. `loadData` reads a JSON copy only for an absent bundle and checks the shape.
+- Reconciliation: stale commands and sizes in CLAUDE.md, README and BACKLOG; three duplicate VPS tasks became one;
+  finished items flipped (see BACKLOG). New tests: `tests/browser/browsing.cjs` (94 checks), `tests/js/browse.test.cjs`
+  (9), `tests/browser/measure.cjs` (not a pass or fail check).
+
+**Measured** (Chrome 156, Apple M1 Pro 8 cores, macOS 24.6, no CPU throttle, 5 runs, median; same script before and after)
+- DOM elements in `#content-main`: Feed all alerts 48,220 -> 767; Table 7,507 (500 rows) -> 806 (50 rows); Local Harghita
+  (418 alerts) 6,748 -> 1,009; Feed after the filter Meteo 6,834 -> 591; Dashboard 377 -> 380.
+- Filter to painted frame (Meteo filter): Feed 83 -> 33 ms, Table 50 -> 33 ms, Local 33 -> 33 ms, Dashboard 33 -> 31 ms;
+  language switch on Dashboard 66 -> 67 ms. The 33 ms is two animation frames at 60 Hz; it is a floor, not a cost.
+- Data unchanged: 3,385 alerts, 3,618 deliveries, 196 ERROR, 1 failed alert, 21 CANCEL; bundles untouched
+  (`alerts.js` 4,664,511, `meta.js` 35,993, `geo.js` 250,835 bytes). No rebuild needed.
+- Tests: 87 Python (none skipped), 53 Node in UTC, Europe/Bucharest, America/New_York, 495 browser checks (401 earlier + 94 new), no failure.
+- Table: 68 pages, 67 x 50 + 35 rows; every one of 3,385 IDs reached once by clicking Next 67 times.
+- Screenshots inspected: Table RO 1440 (page 5) and 390 (page 2), Feed RO and EN 1440, Feed EN 390, Local RO 1440 (page 2),
+  Local EN 390, Dashboard EN 1440 (Fit selection), export-disabled empty state RO, load-error screen RO 1000.
+
+**Hard**
+- A script `error` handler also caught the optional analytics tag when its request failed, and showed the load error
+  on a healthy page. Fixed: only `js/`, `vendor/` and `data/` files count.
+- Leaflet animates `fitBounds`; the zoom read right after the click was the old one. The test waits for the animation.
+- The corpus has no two alerts with the same `sent_at`, so equal-time ties cannot show on real data. The id rule is
+  tested on synthetic ties and on risk-sort ties (thousands); a Node test and B02 cover both.
+- `#boot-loading` is a child of `#content-main`, so `#content-main > *` matches before the first render; the older tests still pass
+  because `goto` waits for the load event, which follows the first render.
+
+**Decided**
+- Pagination state is `state.page`; reset is central (`selectionKey`), not per handler. Cost: the old explicit resets are redundant but kept.
+- Pe scurt and the empty state redraw each time; splitting Pe scurt is backlog. Cost: its three charts are recreated on a filter change.
+- Export stays JSON only and compact (no indentation), about 10 MB for the full archive. Cost: less readable raw; any JSON viewer fixes it.
+- Map mode and zoom stay out of the URL (as in Phase 05). "Scope navigation" for framing means mounting the Dashboard again (return from Local) plus the Fit selection button.
+- `exported_at` exists only in the export, never in a bundle (checked by B06).
+
 ## 2026-10-27 — Audit phase 05: visual hierarchy and geographic coverage (branch `feat/audit-05-visual`, Sonnet)
 
 **Done**

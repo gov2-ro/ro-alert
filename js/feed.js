@@ -7,17 +7,29 @@ function feedChipValues() {
   return known.concat(present.filter((v) => !CATEGORY_BY_VALUE.has(v)));
 }
 
-function renderFeed(rows, container) {
+/* The shell is drawn once per visit to the view; updateFeed() refreshes its parts. */
+function mountFeed(container) {
   container.innerHTML = `<div class="feed-view">
     <div class="filter-chips" id="feed-chips"></div>
     <div class="feed-layout">
       <div class="feed-sidebar" id="feed-sidebar"></div>
-      <div id="feed-body" class="feed-body"></div>
+      <div class="feed-main">
+        <div class="feed-head">
+          <h2 id="list-heading" tabindex="-1" data-i18n="list_heading_feed">${esc(t("list_heading_feed"))}</h2>
+          <div class="list-tools" id="list-tools"></div>
+        </div>
+        <div id="pager-top"></div>
+        <div id="feed-body" class="feed-body"></div>
+        <div id="pager-bottom"></div>
+      </div>
     </div>
   </div>`;
-  buildFeedChips();
+  document.getElementById("feed-body").addEventListener("click", feedCardClick);     // one handler for all cards
+}
+
+function updateFeed(rows, opts = {}) {
+  if (!opts.listOnly) { buildFeedChips(); renderFeedSidebar(rows); }
   renderFeedBody(rows);
-  renderFeedSidebar(rows);
 }
 
 /* The chips show the risk facet of `state`; they keep no filter of their own.
@@ -45,6 +57,7 @@ function buildFeedChips() {
   };
 }
 
+/* One page of the complete selection, newest first (ties by id). */
 function renderFeedBody(rows) {
   const host = document.getElementById("feed-body");
   if (!host) return;
@@ -52,25 +65,35 @@ function renderFeedBody(rows) {
     host.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${t("feed_no_alerts")}</p></div>`;
     return;
   }
-  // Sort by sent_at descending
-  const sorted = rows.slice().sort((a, b) => (b.sent_at || "").localeCompare(a.sent_at || ""));
-  // Group by date
+  const sorted = sortRecords(rows, timeKey, "desc");
+  const info = pageInfo(sorted.length, state.page);
+  host.innerHTML = recordListHtml(sorted.slice(info.offset, info.offset + info.size), dateCounts(rows));
+  document.getElementById("pager-top").innerHTML = pagerHtml(info, "top");
+  document.getElementById("pager-bottom").innerHTML = pagerHtml(info, "bottom");
+  document.getElementById("list-tools").innerHTML = exportHtml(sorted.length);
+}
+
+/* Cards of one page, grouped by date. A date can continue on another page, so its header
+   says how many of the day's alerts this page shows when that is not all of them.
+   `dayTotals` is the Map date -> count over the complete selection. */
+function recordListHtml(pageRows, dayTotals) {
   const groups = new Map();
-  for (const a of sorted) {
+  for (const a of pageRows) {
     const d = a.date || (a.sent_at ? a.sent_at.slice(0, 10) : "unknown");
     if (!groups.has(d)) groups.set(d, []);
     groups.get(d).push(a);
   }
   let html = "";
   for (const [date, alerts] of groups) {
+    const total = dayTotals.get(date) || alerts.length;
     const label = formatDateHeader(date);
-    html += `<div class="date-header">${label} · ${alerts.length} ${t("legend_alerts")}</div>`;
-    for (const a of alerts) {
-      html += feedCardHtml(a);
-    }
+    const text = alerts.length === total
+      ? `${label} · ${fmtN(total)} ${t("legend_alerts")}`
+      : fill(t("feed_day_part"), { d: label, s: fmtN(alerts.length), n: fmtN(total) });
+    html += `<div class="date-header">${esc(text)}</div>`;
+    for (const a of alerts) html += feedCardHtml(a);
   }
-  host.innerHTML = html;
-  host.onclick = feedCardClick;
+  return html;
 }
 
 /* The card button gives keyboard access; a click anywhere on the card also opens the record. */

@@ -94,6 +94,8 @@ These are audit measurements, not target values for corrected risk categories.
 | Table / Feed rendering | 500 table rows; 3,385 cards; 48,923 Feed DOM elements |
 | alerts.js / meta.js / geo.js | 4,531,815 / 34,304 / 250,835 bytes |
 
+Current values after Phase 06 (render measure): Feed 767 DOM elements, Table 806 (50 rows), Local Harghita 1,009; `alerts.js` 4,664,511 / `meta.js` 35,993 / `geo.js` 250,835 bytes. The table above stays as the audit record.
+
 Cached raw workbooks exist at `repository/arhiva-ro-alert/ckan/` in the audited workspace.
 They are ignored by Git. A fresh clone cannot assume that they exist.
 The source GeoJSON is also ignored. Phase 02 must close that build-input gap.
