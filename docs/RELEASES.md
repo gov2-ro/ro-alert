@@ -1,5 +1,6 @@
 # Releases
 
+- v0.10.0 — 2026-10-27 — Audit phase 02, pipeline reliability: staged ingest with a journal and recovery, exit 0 on no new data, revisions and duplicate resources handled, validation gates in the build (dates, statuses, conflicting ids, delivery conservation), schema version and input hashes in `meta`, tracked county geometry, offline CI with committed workbook fixtures. Data unchanged.
 - v0.9.0 — 2026-10-27 — Audit phase 01, analytics correctness: risk categories from the structured source fields first, with whole-word text fallback (53 alerts reclassified); daily timeline in UTC calendar days (210 days, no lost alerts); failure rates only for the reporting sample (April: 1 / 237 alerts, 196 / 470 deliveries), with `meta.months[].error_reporting`. First persistent test suite (Python, Node, browser smoke).
 - v0.8.0 — 2026-10-27 — Project audit and implementation hand-off: six ordered briefs for analytics, pipeline reliability, shared state and places, mobile accessibility, visual architecture, and complete browsing. Named acceptance checks and implementation guidelines; no application changes.
 - v0.7.0 — 2026-10-27 — "Pe scurt" view (bear share, evening share, monthly change, bear and storm per month, top localities), timeline with official totals for summary-only months, Sources and method section.
