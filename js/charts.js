@@ -5,18 +5,7 @@ Chart.defaults.color = "#6b6b6b";
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
 Chart.defaults.borderColor = "#ddd8cc";
 
-const CAT_COLORS = {
-  "Animale periculoase": "#b07d3a",
-  "Copil dispărut": "#d05ce3",
-  "Atac aerian / dronă": "#d93b3b",
-  "Meteo": "#2a6fc4",
-  "Inundații": "#2aa6c4",
-  "Incendiu": "#e3852b",
-  "Tehnologic": "#9aa72b",
-  "Securitate națională": "#c44",
-  "Altele": "#8a8a8a",
-};
-function catColor(name) { return CAT_COLORS[name] || "#8a8a8a"; }
+/* The category palette, labels and catColor() live in filters.js (one palette for all views). */
 
 const charts = {};
 
@@ -38,7 +27,7 @@ function countBy(arr, key) {
 function renderStackedTimelineChart(canvasId, rows) {
   const d = Stats.dailyCounts(rows);
   const datasets = d.categories.map((c) => ({
-    label: c, data: d.series[c], backgroundColor: catColor(c), stack: "haz", borderWidth: 0, categoryPercentage: 0.9, barPercentage: 1,
+    label: catLabel(c), data: d.series[c], backgroundColor: catColor(c), stack: "haz", borderWidth: 0, categoryPercentage: 0.9, barPercentage: 1,
   }));
   datasets.push({
     label: t("kpi_failed"), data: d.failed, type: "line",
@@ -68,7 +57,7 @@ function renderHazardChart(canvasId, rows) {
   const cfg = {
     type: "bar",
     data: {
-      labels: entries.map((e) => e[0]),
+      labels: entries.map((e) => catLabel(e[0])),
       datasets: [{ data: entries.map((e) => e[1]), backgroundColor: entries.map((e) => catColor(e[0])), borderRadius: 4 }],
     },
     options: {

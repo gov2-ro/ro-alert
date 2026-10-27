@@ -9,8 +9,19 @@ function stripDiacritics(s) {
   return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
+/* The Romanian text the bear measure reads, or null when the alert has none. English-only
+   alerts have no Romanian text; the measure does not translate them. Text of an unsplit or
+   unknown language is read as it is: the bear word is Romanian, so it matches only there. */
+function romanianText(a) {
+  if (a.msg_ro) return a.msg_ro;
+  if (a.message_language === "en") return null;
+  return a.msg || null;
+}
+
+/* true / false for an alert with Romanian text; null when that text is unavailable. */
 function isBearAlert(a) {
-  return BEAR_RE.test(stripDiacritics(a.msg_ro || a.msg || ""));
+  const text = romanianText(a);
+  return text == null ? null : BEAR_RE.test(stripDiacritics(text));
 }
 
 /* Month keys ("2025-09" ...) from the first to the last month in META.months. */
@@ -34,20 +45,20 @@ function storyStats(rows, withOfficial) {
   const official = {};
   for (const m of (DATA.meta.months || [])) if (m.official) official[m.key] = m;
   const alertsBy = {}, bearBy = {}, stormBy = {};
-  let bear = 0, evening = 0, withHour = 0, failedAlerts = 0;
+  let bear = 0, evening = 0, withHour = 0, failedAlerts = 0, noRomanian = 0;
   const places = new Map();
   for (const a of rows) {
     const k = (a.source_file || "").slice(0, 7);
     alertsBy[k] = (alertsBy[k] || 0) + 1;
     const b = isBearAlert(a);
-    if (b) { bear++; bearBy[k] = (bearBy[k] || 0) + 1; }
+    if (b === null) noRomanian++;
+    else if (b) { bear++; bearBy[k] = (bearBy[k] || 0) + 1; }
     if (a.risc_asociat === "Furtuni") stormBy[k] = (stormBy[k] || 0) + 1;
     if (a.hour != null) { withHour++; if (a.hour >= 20) evening++; }
     if (a.status_ok === false) failedAlerts++;
     for (const p of a.places || []) {
       let e = places.get(p.siruta);
-      if (!e) { e = { name: p.name, judet: null, n: 0, risks: new Map() }; places.set(p.siruta, e); }
-      if (!e.judet && a.scope === "county") e.judet = a.judet;
+      if (!e) { e = { id: p.siruta, name: p.name, county: p.county || null, n: 0, risks: new Map() }; places.set(p.siruta, e); }
       e.n++;
       e.risks.set(a.risk_category, (e.risks.get(a.risk_category) || 0) + 1);
     }
@@ -70,9 +81,10 @@ function storyStats(rows, withOfficial) {
   const topPlaces = [...places.values()]
     .sort((x, y) => y.n - x.n || x.name.localeCompare(y.name))
     .slice(0, 10)
-    .map((e) => ({ name: e.name, judet: e.judet, n: e.n,
+    .map((e) => ({ id: e.id, name: placeLabel(e.id), county: e.county, n: e.n,
                    risk: [...e.risks.entries()].sort((x, y) => y[1] - x[1])[0][0] }));
-  return { n, bear, bearPct: pctRate(bear, n), evening, withHour, eveningPct: pctRate(evening, withHour),
+  const bearBase = n - noRomanian;
+  return { n, bear, bearBase, noRomanian, bearPct: pctRate(bear, bearBase), evening, withHour, eveningPct: pctRate(evening, withHour),
            failedAlerts, months, topPlaces };
 }
 
@@ -95,13 +107,13 @@ function renderStory(rows, container) {
   }).join("");
 
   const placeRows = S.topPlaces.map((p) =>
-    `<tr><td>${esc(p.name)}</td><td>${esc(p.judet || "—")}</td><td class="num">${p.n}</td>` +
-    `<td><span class="dot" style="background:${catColor(p.risk)}"></span>${esc(p.risk || "—")}</td></tr>`).join("");
+    `<tr><td><button type="button" class="place-link" data-place="${p.id}">${esc(p.name)}</button></td><td>${esc(p.county || "—")}</td><td class="num">${p.n}</td>` +
+    `<td><span class="dot" style="background:${catColor(p.risk)}"></span>${esc(p.risk ? catLabel(p.risk) : "—")}</td></tr>`).join("");
 
   container.innerHTML = `
     <section class="kpis">
       <div class="kpi accent"><div class="v">${fmtPct(S.bearPct)}%</div><div class="k">${t("story_bear_share")}</div>
-        <div class="sub">${t("story_bear_sub").replace("%n", S.n).replace("%b", S.bear)}</div></div>
+        <div class="sub">${t("story_bear_sub").replace("%n", S.bearBase).replace("%b", S.bear)}${S.noRomanian ? " " + t("story_bear_noro").replace("%x", S.noRomanian) : ""}</div></div>
       <div class="kpi"><div class="v">${fmtPct(S.eveningPct)}%</div><div class="k">${t("story_evening_share")}</div>
         <div class="sub">${t("story_evening_sub").replace("%e", S.evening).replace("%n", S.withHour)}</div></div>
       <div class="kpi err"><div class="v">${S.failedAlerts}</div><div class="k">${t("story_failed_alerts")}</div>
@@ -136,6 +148,7 @@ function renderStory(rows, container) {
     ${sourcesHtml()}`;
 
   renderStoryCharts(S, rows);
+  container.querySelectorAll(".place-link").forEach((b) => b.addEventListener("click", () => selectPlace(Number(b.dataset.place))));
 }
 
 function storyAxisLabels(S) {

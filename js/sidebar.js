@@ -2,22 +2,6 @@
 
 let sidebarMode = "console"; // "console" | "briefing"
 
-/* Facet definitions for v2 — same structure as v1, with `briefing` flag */
-const FACET_DEFS_V2 = [
-  { field: "risk_category", meta: "risk_category", label: "facet_risk_category", open: true, briefing: true },
-  { field: "status_trimitere", meta: "status_trimitere", label: "facet_status_trimitere", open: true, briefing: true },
-  { field: "judet", meta: "judet", label: "facet_judet" },
-  { field: "severitate", meta: "severitate", label: "facet_severitate" },
-  { field: "tip_mesaj", meta: "tip_mesaj", label: "facet_tip_mesaj" },
-  { field: "risc_principal", meta: "risc_principal", label: "facet_risc_principal" },
-  { field: "risc_asociat", meta: "risc_asociat", label: "facet_risc_asociat" },
-  { field: "cod_eveniment", meta: "cod_eveniment", label: "facet_cod_eveniment" },
-  { field: "meteo_color", meta: "meteo_color", label: "facet_meteo_color" },
-  { field: "tip_inregistrare", meta: "tip_inregistrare", label: "facet_tip_inregistrare" },
-  { field: "initiator", meta: "initiator", label: "facet_initiator" },
-  { field: "month", meta: "month", label: "facet_month" },
-];
-
 function buildSidebar() {
   buildDateRange();
   buildFacets();
@@ -34,19 +18,30 @@ function buildDateRange() {
     <input type="date" id="date-from" min="${min}" max="${max}" value="${min}">
     <span>–</span>
     <input type="date" id="date-to" min="${min}" max="${max}" value="${max}">`;
-  document.getElementById("date-from").addEventListener("change", (e) => {
-    state.dateFrom = e.target.value || null; render();
-  });
-  document.getElementById("date-to").addEventListener("change", (e) => {
-    state.dateTo = e.target.value || null; render();
-  });
+  document.getElementById("date-from").addEventListener("change", (e) => setDateBound("dateFrom", e.target.value));
+  document.getElementById("date-to").addEventListener("change", (e) => setDateBound("dateTo", e.target.value));
+}
+
+/* Set one date bound from an input. A reversed range is refused with a visible notice; the
+   inputs then show the state again. */
+function setDateBound(key, value) {
+  const next = { dateFrom: state.dateFrom, dateTo: state.dateTo, [key]: value || null };
+  if (next.dateFrom && next.dateTo && next.dateFrom > next.dateTo) {
+    addNotice("range", [next.dateFrom, next.dateTo]);
+    syncSidebar();
+    return;
+  }
+  state.dateFrom = next.dateFrom;
+  state.dateTo = next.dateTo;
+  state.page = 1;
+  update("push");
 }
 
 function buildFacets() {
   const host = document.getElementById("facets");
   if (!host) return;
   host.innerHTML = "";
-  FACET_DEFS_V2.forEach((def) => {
+  FACET_REGISTRY.forEach((def) => {
     const opts = DATA.meta.facets[def.meta] || [];
     if (!opts.length) return;
     const facet = document.createElement("div");
@@ -57,8 +52,8 @@ function buildFacets() {
       const isErr = def.field === "status_trimitere" && o.value === "ERROR";
       return `<label class="facet-opt${isErr ? " sel-error" : ""}">
         <input type="checkbox" value="${esc(o.value)}" data-field="${def.field}">
-        <span class="lbl" title="${esc(o.value)}">${esc(o.value)}</span>
-        <span class="cnt">${o.count}</span>
+        <span class="lbl" title="${esc(o.value)}"></span>
+        <span class="cnt" title="${esc(t("facet_counts_title"))}">${o.count}</span>
       </label>`;
     }).join("");
     facet.innerHTML = `
@@ -69,11 +64,33 @@ function buildFacets() {
       cb.addEventListener("change", () => {
         const set = state.filters[cb.dataset.field];
         cb.checked ? set.add(cb.value) : set.delete(cb.value);
-        render();
+        state.page = 1;
+        update("push");
       });
     });
     host.appendChild(facet);
   });
+}
+
+/* Controls show what `state` says, after every render and history event. */
+function syncSidebar() {
+  document.querySelectorAll("#facets input[type=checkbox]").forEach((cb) => {
+    const set = state.filters[cb.dataset.field];
+    cb.checked = !!(set && set.has(cb.value));
+    const lbl = cb.parentElement.querySelector(".lbl");
+    const text = facetValueLabel(cb.dataset.field, cb.value);
+    if (lbl.textContent !== text) lbl.textContent = text;
+    cb.parentElement.querySelector(".cnt").title = t("facet_counts_title");
+  });
+  const search = document.getElementById("search");
+  if (search && document.activeElement !== search && search.value !== (state.search || "")) search.value = state.search || "";
+  const df = document.getElementById("date-from"), dt = document.getElementById("date-to");
+  const min = DATA.meta.date_min ? DATA.meta.date_min.slice(0, 10) : "";
+  const max = DATA.meta.date_max ? DATA.meta.date_max.slice(0, 10) : "";
+  if (df) df.value = state.dateFrom || min;
+  if (dt) dt.value = state.dateTo || max;
+  document.querySelectorAll(".stab").forEach((b) => b.classList.toggle("active", b.dataset.mode === sidebarMode));
+  updateSidebarVisibility();
 }
 
 function wireSidebarTabs() {

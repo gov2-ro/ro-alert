@@ -1,20 +1,13 @@
 /* Feed view: filter chips, date-grouped chronological alert cards. */
 
-/* Risk categories for feed filter chips */
-const FEED_CHIPS = [
-  { value: null, label: "feed_filter_all" },
-  { value: "Animale periculoase", label: null, color: "#b07d3a" },
-  { value: "Copil dispărut", label: null, color: "#d05ce3" },
-  { value: "Atac aerian / dronă", label: null, color: "#d93b3b" },
-  { value: "Inundații", label: null, color: "#2aa6c4" },
-  { value: "Meteo", label: null, color: "#2a6fc4" },
-  { value: "Incendiu", label: null, color: "#e3852b" },
-  { value: "Tehnologic", label: null, color: "#9aa72b" },
-];
-let feedChipFilter = null; // null = all, or risk_category string
+/* Risk categories for the chips: the categories present in the data, in palette order. */
+function feedChipValues() {
+  const present = ((DATA.meta.facets || {}).risk_category || []).map((o) => o.value);
+  const known = CATEGORIES.map((c) => c.value).filter((v) => present.includes(v));
+  return known.concat(present.filter((v) => !CATEGORY_BY_VALUE.has(v)));
+}
 
 function renderFeed(rows, container) {
-  feedChipFilter = null;
   container.innerHTML = `<div class="feed-view">
     <div class="filter-chips" id="feed-chips"></div>
     <div style="display:flex;gap:20px">
@@ -27,32 +20,29 @@ function renderFeed(rows, container) {
   renderFeedSidebar(rows);
 }
 
+/* The chips show the risk facet of `state`; they keep no filter of their own.
+   A category chip replaces the risk selection with that category. "All" clears only the risk
+   facet. With several risk values selected, each of them shows as selected and "All" does not. */
 function buildFeedChips() {
   const host = document.getElementById("feed-chips");
   if (!host) return;
-  host.innerHTML = FEED_CHIPS.map((c) => {
-    const label = c.label ? t(c.label) : c.value;
-    const dot = c.color ? `<span class="chip-dot" style="background:${c.color}"></span>` : "";
-    const active = feedChipFilter === c.value ? " active" : "";
-    return `<button class="filter-chip${active}" data-risk="${c.value || ""}">${dot}${label}</button>`;
-  }).join("");
-  host.addEventListener("click", (e) => {
+  const set = state.filters.risk_category;
+  const chip = (value, label, color) => {
+    const on = value === null ? set.size === 0 : set.has(value);
+    const dot = color ? `<span class="chip-dot" style="background:${color}"></span>` : "";
+    return `<button type="button" class="filter-chip${on ? " active" : ""}" aria-pressed="${on}" data-risk="${esc(value || "")}">${dot}${esc(label)}</button>`;
+  };
+  host.innerHTML = chip(null, t("feed_filter_all"), null) +
+    feedChipValues().map((v) => chip(v, catLabel(v), catColor(v))).join("");
+  host.onclick = (e) => {
     const btn = e.target.closest(".filter-chip");
     if (!btn) return;
     const risk = btn.dataset.risk || null;
-    feedChipFilter = risk;
-    // Update active state
-    host.querySelectorAll(".filter-chip").forEach((b) => b.classList.toggle("active", b.dataset.risk === (risk || "")));
-    // Apply to filters
-    const set = state.filters.risk_category;
     set.clear();
     if (risk) set.add(risk);
-    // Also update sidebar checkbox
-    document.querySelectorAll("#facets input[data-field='risk_category']").forEach((cb) => {
-      cb.checked = risk ? cb.value === risk : false;
-    });
-    render();
-  });
+    state.page = 1;
+    update("push");
+  };
 }
 
 function renderFeedBody(rows) {
@@ -88,19 +78,16 @@ function renderFeedBody(rows) {
 function formatDateHeader(dateStr) {
   if (!dateStr || dateStr === "unknown") return t("col_time");
   const [y, m, d] = dateStr.split("-");
-  const monthsRo = ["", "Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie", "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie"];
-  const monthsEn = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const mon = state.lang === "en" ? monthsEn[+m] : monthsRo[+m];
-  return `${+d} ${mon} ${y}`;
+  return `${+d} ${monthName(+m)} ${y}`;
 }
 
 function feedCardHtml(a) {
-  const msg = state.lang === "en" ? (a.msg_en || a.msg || "") : (a.msg_ro || a.msg || "");
+  const msg = messageView(a, state.lang).text;
   return `<div class="feed-card" data-id="${a.id}" style="border-left:4px solid ${catColor(a.risk_category)}">
     <div class="feed-card-header">
       <span class="feed-card-sender">${esc(a.initiator || "—")}</span>
       <span class="dot" style="background:${catColor(a.risk_category)}"></span>
-      <span class="feed-card-risk">${esc(a.risk_category)}</span>
+      <span class="feed-card-risk">${esc(catLabel(a.risk_category))}</span>
       <span class="feed-card-county">${esc(a.judet || "")}</span>
     </div>
     <div class="feed-card-msg">${esc(msg)}</div>
@@ -120,7 +107,7 @@ function renderFeedSidebar(rows) {
   const failed = rows.filter((a) => a.status_ok === false).length;
   const catM = countBy(rows, "risk_category");
   const entries = [...catM.entries()].sort((a, b) => b[1] - a[1]);
-  let breakdown = entries.map(([k, v]) => `<div class="feed-breakdown-item"><span>${esc(k)}</span><span>${v}</span></div>`).join("");
+  let breakdown = entries.map(([k, v]) => `<div class="feed-breakdown-item"><span>${esc(catLabel(k))}</span><span>${v}</span></div>`).join("");
   host.innerHTML = `
     <div class="feed-sidebar-row"><span>${t("sent_label")}</span><span class="sent">${sent}</span></div>
     <div class="feed-sidebar-row"><span>${t("failed_label")}</span><span class="failed">${failed}</span></div>

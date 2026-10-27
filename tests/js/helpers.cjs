@@ -9,13 +9,13 @@ const ROOT = path.resolve(__dirname, "..", "..");
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 function loadApp(lang = "ro") {
-  const ctx = vm.createContext({ console });
+  const ctx = vm.createContext({ console, URLSearchParams });
   ctx.window = ctx;
   const run = (code, name) => vm.runInContext(code, ctx, { filename: name || "inline" });
   run(read("data/alerts.js"), "alerts.js");
   run(read("data/meta.js"), "meta.js");
   run("const esc = (s) => String(s == null ? '' : s);");
-  for (const f of ["js/i18n.js", "js/stats.js", "js/data.js"]) run(read(f), f);
+  for (const f of ["js/i18n.js", "js/stats.js", "js/data.js", "js/filters.js", "js/urlstate.js"]) run(read(f), f);
   run(`window.state = { lang: ${JSON.stringify(lang)} };`);
   // loadData uses window.GEO only to decide between globals and fetch
   run("window.GEO = {};");

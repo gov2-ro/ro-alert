@@ -341,6 +341,8 @@ EN_LEADINS = [
 
 
 def split_bilingual(msg):
+    """Earlier splitter. It now feeds only the location extraction (see build()); the
+    language fields come from `split_languages`."""
     if not msg:
         return None, None
     text = msg.strip()
@@ -433,6 +435,108 @@ def group_rows(rows):
 # The polygon list holds "N-NAME" items. NAME is upper case, without diacritics, without
 # a county. We resolve it against gazetteer/localities.csv (Wikidata, SIRUTA, CC0), which
 # the build reads offline. Brief: docs/briefs/localities.md.
+# --- message language (audit 03, section D) ------------------------------------
+# `message_language` describes the original text. Values:
+#   ro       Romanian only (no English evidence). msg_ro = msg, msg_en = null.
+#   en       English only. msg_ro = null, msg_en = msg.
+#   mixed    Romanian followed by English. When one boundary separates the two parts
+#            cleanly, msg_ro and msg_en hold them; otherwise both are null.
+#   unknown  Too little evidence (fewer than 3 evidence words). msg_ro and msg_en are null.
+# Evidence is a count of function words that belong to one language only (words in both
+# lists are ignored), compared without diacritics, plus a small bonus for Romanian letters.
+# There is no model and no network. Ambiguous text stays unsplit; `msg` always holds the
+# normalized original, and msg_ro + separator + msg_en rebuilds it exactly.
+EN_EVIDENCE = frozenset("""
+the and of to is are on for with be will not do please use avoid stay from your you this that by at
+as or an has have was were been may can there their it its due area areas following keep away take
+if when until during after before between located near showers torrential frequent electrical
+discharges hail strong wind winds rain possible danger flood flooding follow measures authorities
+period manifestation presence reported bear weather code orange yellow red home shelter emergency
+call only necessary intensifications medium sized
+""".split())
+RO_EVIDENCE = frozenset("""
+averse torentiale frecvente descarcari electrice grindina vijelie intensificari vantului perioada
+manifestare respectati masurile dispuse autoritati deplasarile adapostire autoprotectie apelati
+numai necesitate prezenta urs semnalata animalele gospodarie expuneti pericolului protejati
+ramaneti locuinte pastrati distanta animal incercati fotografia detaliile accesati pagina politiei
+daca sunteti intr zona zonei zone indreptati locurile apropiate pericol avertizare cresteri debite
+ocoliti trafic caderilor evitati persoanele ale ora pana cod apa nu se ce sau si sa un de la din pe
+cu pentru este sunt va vor fi ca care mai dar dupa fost prin intre spre fata al lui cel
+""".split())
+_SHARED_EVIDENCE = EN_EVIDENCE & RO_EVIDENCE
+EN_EVIDENCE, RO_EVIDENCE = EN_EVIDENCE - _SHARED_EVIDENCE, RO_EVIDENCE - _SHARED_EVIDENCE
+RO_LETTERS = "ăâîșțşţȋ"
+MIN_EVIDENCE = 3          # words needed before a part counts as one language
+DOMINANCE = 3             # the main language needs this many times the other one
+LEAK_SHARE = 5            # a split may leak at most 1/5 of the evidence in both parts
+BOUNDARY_RE = re.compile(r"[.!?][\"”)]?\s+(?=\S)|\n\s*(?=\S)|(?<=[.!?])(?=[A-ZĂÂÎȘȚ])")
+
+
+def language_evidence(text):
+    """Return (english words, romanian words) found in `text`."""
+    plain = _ascii(text)
+    words = re.findall(r"[a-z]+", plain)
+    ro_letters = min(3, sum(c in RO_LETTERS for c in (text or "").lower()))
+    return (sum(w in EN_EVIDENCE for w in words),
+            sum(w in RO_EVIDENCE for w in words) + ro_letters)
+
+
+def classify_language(text):
+    """Language of one whole text: ro, en, mixed (both have evidence) or unknown."""
+    en, ro = language_evidence(text)
+    if en >= MIN_EVIDENCE and en >= DOMINANCE * ro:
+        return "en"
+    if ro >= MIN_EVIDENCE and ro >= DOMINANCE * en:
+        return "ro"
+    if en >= MIN_EVIDENCE and ro >= MIN_EVIDENCE:
+        return "mixed"
+    return "unknown"
+
+
+def _boundaries(text):
+    """Candidate split offsets: after a sentence end or a line break, or at an English lead-in."""
+    out = {m.end() for m in BOUNDARY_RE.finditer(text) if 0 < m.end() < len(text)}
+    for lead in EN_LEADINS:
+        for m in re.finditer(re.escape(lead), text):
+            if m.start() > 20 and not text[m.start() - 1].isalnum():
+                out.add(m.start())
+    return sorted(out)
+
+
+def split_languages(msg):
+    """Return (message_language, msg_ro, msg_en) for the normalized original `msg`.
+
+    The Romanian part comes first. The boundary with the least leaked evidence wins; the
+    latest one wins a tie. A neutral sentence (no evidence) therefore stays with the Romanian
+    part. `msg_ro` ends with its own punctuation; only white space is cut at the boundary."""
+    if not msg or not msg.strip():
+        return "unknown", None, None
+    text = msg.strip()
+    best = None
+    for i in _boundaries(text):
+        ro_part, en_part = text[:i].rstrip(), text[i:]
+        if not ro_part:
+            continue
+        en_in_ro, ro_in_ro = language_evidence(ro_part)
+        en_in_en, ro_in_en = language_evidence(en_part)
+        if ro_in_ro < MIN_EVIDENCE or en_in_en < MIN_EVIDENCE:
+            continue
+        leak = en_in_ro + ro_in_en
+        if leak * LEAK_SHARE > ro_in_ro + en_in_en:
+            continue
+        key = (leak, -i)
+        if best is None or key < best[0]:
+            best = (key, ro_part, en_part)
+    if best:
+        return "mixed", best[1], best[2]
+    lang = classify_language(text)
+    if lang == "ro":
+        return "ro", text, None
+    if lang == "en":
+        return "en", None, text
+    return lang, None, None
+
+
 GAZETTEER = os.path.join(ROOT, "gazetteer", "localities.csv")
 GENERIC_GEOM = {"CERC", "POLIGON", "POLYGON", "CIRCLE"}
 POLY_ITEM_RE = re.compile(r"^\s*\d+\s*-\s*(.*?)\s*$")
@@ -475,7 +579,7 @@ def load_gazetteer(path=GAZETTEER):
             if not county or "județ" in types:
                 continue
             rows.append({"siruta": int(r["siruta"]), "name": r["name"], "key": r["key"],
-                         "county": county_norm(county), "lat": round(float(r["lat"]), 4),
+                         "county": county_norm(county), "county_name": county, "lat": round(float(r["lat"]), 4),
                          "lon": round(float(r["lon"]), 4), "village": bool(types & LOCALITY_TYPES)})
     village_keys = {(r["county"], r["key"]) for r in rows if r["village"]}
     places = [r for r in rows if r["village"] or (r["county"], r["key"]) not in village_keys]
@@ -689,10 +793,12 @@ def _drop_paths(obj, path, drop):
 
 def msg_parts(a):
     """Return (drop_msg, sep): `msg` can be rebuilt as msg_ro + sep + msg_en (sep is " " by
-    default). When it cannot, keep `msg`."""
+    default; msg_en alone for English-only text). When it cannot, keep `msg`."""
     msg, ro, en = a.get("msg"), a.get("msg_ro"), a.get("msg_en")
-    if msg is None and not ro:
+    if msg is None and not ro and not en:
         return True, " "
+    if msg and en and not ro:          # English only
+        return msg == en, " "
     if not msg or not ro:
         return False, " "
     if not en:
@@ -857,9 +963,11 @@ def build():
 
         judet, scope = judet_for(initiator, title)
         dt = parse_dt(r.get("Data trimitere"))
-        ro, en = split_bilingual(msg)
-        # extract from the Romanian half only (avoids duplicate English hits)
-        locations = extract_locations(ro or msg, poligoane)
+        language, ro, en = split_languages(msg)
+        # Extract from the Romanian half only (avoids duplicate English hits). The input stays
+        # the half of the earlier splitter, so `locations` does not change with the language fix.
+        legacy_ro, _ = split_bilingual(msg)
+        locations = extract_locations(legacy_ro or msg, poligoane)
         src_file = (r.get("Fisier sursa") or "").strip()
         month_key = src_file.replace(".csv", "")
         if gkey:
@@ -892,7 +1000,7 @@ def build():
                 if pl["siruta"] not in seen_sir:
                     seen_sir.add(pl["siruta"])
                     places.append({"name": pl["name"], "siruta": pl["siruta"],
-                                   "lat": pl["lat"], "lon": pl["lon"]})
+                                   "lat": pl["lat"], "lon": pl["lon"], "county": pl["county_name"]})
             else:
                 unresolved[(status, nm, judet, unresolved_reason(status, nm, judet, scope, gaz))] += 1
         place_counts["generic"] += n_generic
@@ -920,6 +1028,7 @@ def build():
             "localities": [l["name"] for l in locations if l["type"] == "locality"],
             "places": places,
             "msg": msg,
+            "message_language": language,
             "msg_ro": ro,
             "msg_en": en,
             # newer-format metadata (often null)
@@ -1045,6 +1154,7 @@ def build():
             "bear_feb_jul": {k: bear_counts[k] for k in ("alerts", "mentions", "resolved", "no_match", "ambiguous")},
             "source": "Wikidata, SIRUTA (P843), CC0",
         },
+        "message_languages": dict(sorted(collections.Counter(a["message_language"] for a in alerts).items())),
         "judet_counts": dict(judet_counts),
         "localities_by_judet": {
             j: [loc for loc, _ in cnt.most_common()]

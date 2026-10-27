@@ -1,5 +1,56 @@
 # Activity
 
+## 2026-10-27 — Audit phase 03: shared state, places, and language (branch `feat/audit-03-state`, Sonnet)
+
+**Done**
+- One state path: `update(mode)` normalizes, syncs controls, renders and writes the URL. Facet registry
+  (`FACET_REGISTRY`) and category palette (`CATEGORIES`) live in `filters.js`; `FACET_DEFS`,
+  `FACET_DEFS_V2`, `CAT_COLORS` and the Feed chip state are gone. Category, meteo-colour, month and
+  footer labels follow the UI language. A language change renders once.
+- Persistent active-filter strip and notices outside the view; every chip has a remove button.
+  Facet counts carry an "all data" note. Zero results keep search, strip and a clear action.
+- Places by SIRUTA: `state.selectedPlaceId`, `places[].county`, Local chips and Story links from
+  distinct codes, searchable list, selected place in heading and strip. Map point click adds no county.
+- `js/urlstate.js`: versioned hash (`schema=1`), push for steps, replace for typing, language and sort;
+  Back and Forward share the load path; a record link opens the drawer, which says when the record is
+  outside the selection. Unknown keys, bad dates, absent IDs and a foreign schema give notices.
+- Search: one accent- and case-insensitive normalizer over message, title, county, initiator,
+  candidates and canonical place names.
+- Build: `message_language` (ro, en, mixed, unknown), evidence-based `split_languages`, `places[].county`,
+  `meta.message_languages`. `tools/field_diff.py` diffs two builds by alert ID and field.
+- Tests: 13 Python (`test_language.py`), 22 Node (`state.test.cjs`), browser checks in
+  `tests/browser/state.cjs` (RO and EN, 1440/1024/390/320, file://).
+- Fixed two defects found on the way: the footer was never translated (it follows the scripts, so
+  `init` now waits for the parsed page); the Leaflet panes covered the drawer (`#map` isolates).
+
+**Measured**
+- Corpus unchanged: 3,385 alerts, 3,618 deliveries, 196 ERROR rows, 1 failed alert, 21 CANCEL, same IDs,
+  delivery rows equal. Field diff by alert ID: `message_language` 3,385 (new); `msg_ro` 2,475 (2,266 only
+  lose a trailing full stop or space; 209 split differently); `msg_en` 208; `places[].county` 1,392
+  (new). Nothing else changed, `locations` included. `meta`: new `message_languages`; `omitted` gains
+  `msg_ro`; `inputs` has a new `build_data.py` hash.
+- `message_language`: ro 448, en 4, mixed 2,933, unknown 0. Record `60e0361757e4` is `en`.
+- Bundles, before -> after: `alerts.js` 4,531,252 -> 4,664,511; `meta.js` 35,928 -> 35,993; `geo.js` 250,835.
+- Bear measure: numerator 2,333 (unchanged); denominator 3,385 -> 3,381 (4 English-only alerts have no
+  Romanian text and are reported); 68.9% -> 69.0%.
+- Toplița 83641: 23 alerts, all Harghita; point count 24 equals selection 24 with one synthetic national alert.
+- Tests: 87 Python (none skipped), 36 Node in UTC, Europe/Bucharest and America/New_York, 168 browser checks pass.
+  Two builds are byte-identical and equal to the tracked bundles (`test_build`).
+
+**Hard**
+- The old splitter cut inside English text ("Avoid", "Please" lead-ins) and missed upper-case lead-ins.
+  A boundary search with an evidence count fixed it. Tie rule: least leaked evidence, then the latest boundary.
+- The new split would change `locations` for 3 alerts (English tail read as streets). Not authorized, so
+  `extract_locations` keeps the earlier splitter's input.
+- Hungarian text after the Romanian one (423 alerts) stays inside `msg_ro`; the brief has no value for it.
+
+**Decided**
+- `mixed` means both languages are present (split when clear, else unsplit with null parts). Alternative:
+  `mixed` only for unsplit text; it would label 2,933 normal bilingual alerts `ro`.
+- A date equal to a data bound counts as unset; an outside date stays and is explained, never clamped.
+- A default state has an empty hash; `schema=1` appears with any other key.
+- Leaving the Local view clears county and place, as before.
+
 ## 2026-10-27 — Audit phase 02: pipeline reliability (branch `feat/audit-02-pipeline`, Sonnet)
 
 **Done**
