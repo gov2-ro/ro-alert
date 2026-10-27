@@ -1,28 +1,50 @@
 /* Location analytics view: county drill-down with scoped KPIs, charts, and feed. */
 
-function renderLocation(rows, county, container) {
-  // Chips list every locality in the county, independent of the active locality
-  // filter, so users can switch between localities without going back.
-  const countyRows = applyFilters(DATA.alerts, { ...state, selectedLocality: null });
-  const localityCounts = new Map();
-  for (const a of countyRows) {
-    if (a.localities && a.localities.length) {
-      for (const loc of a.localities) {
-        localityCounts.set(loc, (localityCounts.get(loc) || 0) + 1);
-      }
-    }
-  }
-  const locEntries = [...localityCounts.entries()].sort((a, b) => b[1] - a[1]);
+/* Resolved places in a set of alerts: one entry per SIRUTA code, each alert counted once. */
+function placeCounts(rows) {
+  const counts = new Map();
+  for (const a of rows) for (const p of a.places || []) counts.set(p.siruta, (counts.get(p.siruta) || 0) + 1);
+  return [...counts.entries()].sort((x, y) => y[1] - x[1] || placeLabel(x[0]).localeCompare(placeLabel(y[0])));
+}
+
+const PLACE_CHIPS_SHOWN = 12;
+
+function placeChipHtml(id, cnt) {
+  const on = id === state.selectedPlaceId;
+  return `<button type="button" class="locality-chip${on ? " active" : ""}" aria-pressed="${on}" data-place="${id}">${esc(placeLabel(id))}<span class="locality-count">${cnt}</span></button>`;
+}
+
+/* Local view: a county scope, a place scope, or both. The heading shows the scope even when
+   no record remains. Place chips list the resolved places of the alerts that pass the filters
+   and the county scope (but not the place choice), so the user can switch place. */
+function renderLocation(rows, container) {
+  const county = state.selectedCounty;
+  const placeId = state.selectedPlaceId;
+  const scopeRows = applyFilters(DATA.alerts, { ...state, selectedPlaceId: null });
+  const counts = placeCounts(scopeRows);
+  const top = counts.slice(0, PLACE_CHIPS_SHOWN);
+  if (placeId != null && !top.some(([id]) => id === placeId)) top.push([placeId, counts.find(([id]) => id === placeId)?.[1] || 0]);
+
+  const place = placeId != null ? DATA.places.get(placeId) : null;
+  const title = place
+    ? `${esc(place.name)}${place.county ? ` <span class="location-county-sub">· ${esc(place.county)}</span>` : ""}`
+    : esc(county || "");
+  const scopeNote = place && county ? `<span class="location-scope">${t("strip_county").replace("%s", esc(county))}</span>` : "";
 
   container.innerHTML = `<div class="location-view">
     <div class="location-header">
-      <button class="back-btn" id="loc-back-btn" data-i18n="location_back">${t("location_back")}</button>
-      <span class="location-county-name">${esc(county)} <span class="location-county-count">(${rows.length})</span></span>
+      <button type="button" class="back-btn" id="loc-back-btn" data-i18n="location_back">${t("location_back")}</button>
+      <h2 class="location-county-name">${title} <span class="location-county-count">(${rows.length})</span></h2>
+      ${scopeNote}
     </div>
-    ${locEntries.length ? `<div class="locality-chips" id="locality-chips">
-      ${locEntries.map(([loc, cnt]) => `<button class="locality-chip${loc === state.selectedLocality ? " active" : ""}" data-loc="${esc(loc)}">${esc(loc)}<span class="locality-count">${cnt}</span></button>`).join("")}
-    </div>` : ""}
-    <section class="kpis" id="loc-kpis"></section>
+    ${top.length ? `<div class="place-block"><div class="eyebrow">${t("places_title")}</div>
+      <div class="locality-chips" id="locality-chips">${top.map(([id, c]) => placeChipHtml(id, c)).join("")}</div>
+      ${counts.length > top.length ? `<details class="place-more" id="place-more"><summary>${t("places_all").replace("%n", counts.length)}</summary>
+        <input type="search" id="place-filter" placeholder="${esc(t("places_filter_ph"))}" aria-label="${esc(t("places_filter_ph"))}">
+        <div class="locality-chips place-list" id="place-list">${counts.map(([id, c]) => placeChipHtml(id, c)).join("")}</div>
+      </details>` : ""}
+    </div>` : `<p class="chart-cap">${t("places_none")}</p>`}
+    ${rows.length ? `<section class="kpis" id="loc-kpis"></section>
     <div class="location-grid">
       <section class="panel">
         <h2 data-i18n="timeline_title">${t("timeline_title")}</h2>
@@ -41,37 +63,39 @@ function renderLocation(rows, county, container) {
         <div class="chart-box" id="loc-bytype"><canvas id="chart-loc-bytype"></canvas></div>
       </section>
     </div>
-    <div class="location-feed" id="location-feed"></div>
+    <div class="location-feed" id="location-feed"></div>` :
+    `<div class="empty-state"><p>${placeId != null ? t("place_zero") : t("no_results")}</p>
+       <button type="button" class="link-btn" id="empty-clear">${t("empty_clear")}</button></div>`}
   </div>`;
 
-  renderLocationKpis(rows);
-  renderStackedTimelineChart("chart-loc-timeline", rows);
-  renderHazardChart("chart-loc-hazard", rows);
-  document.getElementById("loc-fail-text").innerHTML = failureLinesHtml(rows);
-  renderLocByTypeChart("chart-loc-bytype", rows);
-  renderLocationFeed(rows);
+  if (rows.length) {
+    renderLocationKpis(rows);
+    renderStackedTimelineChart("chart-loc-timeline", rows);
+    renderHazardChart("chart-loc-hazard", rows);
+    document.getElementById("loc-fail-text").innerHTML = failureLinesHtml(rows);
+    renderLocByTypeChart("chart-loc-bytype", rows);
+    renderLocationFeed(rows);
+  } else {
+    document.getElementById("empty-clear").addEventListener("click", clearAll);
+  }
 
-  // Wire back button
-  const backBtn = document.getElementById("loc-back-btn");
-  if (backBtn) backBtn.addEventListener("click", () => {
-    state.selectedCounty = null;
-    state.selectedLocality = null;
-    state.view = "dashboard";
-    document.querySelectorAll(".view-tab").forEach((t) => t.classList.toggle("active", t.dataset.view === "dashboard"));
-    document.getElementById("view-tabs").querySelector("[data-view='location']").disabled = true;
-    render();
-  });
+  document.getElementById("loc-back-btn").addEventListener("click", leaveLocal);
 
-  // Wire locality chips
-  const chipsEl = document.getElementById("locality-chips");
-  if (chipsEl) {
-    chipsEl.addEventListener("click", (e) => {
-      const chip = e.target.closest(".locality-chip");
-      if (!chip) return;
-      const loc = chip.dataset.loc;
-      state.selectedLocality = state.selectedLocality === loc ? null : loc;
-      chipsEl.querySelectorAll(".locality-chip").forEach((c) => c.classList.toggle("active", c.dataset.loc === state.selectedLocality));
-      render();
+  const chipClick = (e) => {
+    const chip = e.target.closest(".locality-chip");
+    if (!chip) return;
+    const id = Number(chip.dataset.place);
+    if (state.selectedPlaceId === id) clearPlace(); else selectPlace(id);
+  };
+  container.querySelectorAll(".locality-chips").forEach((el) => el.addEventListener("click", chipClick));
+
+  const filter = document.getElementById("place-filter");
+  if (filter) {
+    filter.addEventListener("input", () => {
+      const q = normalizeSearch(filter.value);
+      document.querySelectorAll("#place-list .locality-chip").forEach((c) => {
+        c.hidden = !!q && !normalizeSearch(c.textContent).includes(q);
+      });
     });
   }
 }
@@ -93,7 +117,7 @@ function renderLocByTypeChart(canvasId, rows) {
   const cfg = {
     type: "bar",
     data: {
-      labels: entries.map((e) => e[0] || "(none)"),
+      labels: entries.map((e) => e[0] || t("none")),
       datasets: [{ data: entries.map((e) => e[1]), backgroundColor: entries.map((_, i) => ["#2a6fc4", "#d93b3b", "#5a9e6f", "#c47a1a", "#8a8a8a"][i % 5]), borderRadius: 3 }],
     },
     options: {

@@ -5,14 +5,14 @@
 - [x] Prepare specs and implementation guidelines. Entry point: `docs/IMPLEMENTATION_HANDOFF.md`.
 - [x] Phase 01: analytics correctness. Done on branch `feat/audit-01-analytics`. Brief: `docs/briefs/audit-01-analytics.md` (A01–A10).
 - [x] Phase 02: pipeline reliability. Done on branch `feat/audit-02-pipeline`. Brief: `docs/briefs/audit-02-pipeline.md` (P01–P11).
-- [ ] Phase 03: shared state, places, and language. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
+- [x] Phase 03: shared state, places, and language. Done on branch `feat/audit-03-state`. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
 - [ ] Phase 04: mobile and accessibility. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
 - [ ] Phase 05: visual and geographic architecture. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
 - [ ] Phase 06: browsing, export, and rendering. Brief: `docs/briefs/audit-06-browsing.md` (B01–B11).
 
 - [ ] Phase 01 follow-up: `js/story.js` keeps its own `BEAR_RE` copy (the "Pe scurt" bear share
-  counts the word, not the category). Share one rule through the build in a later phase. The
-  Feed chips and `CAT_COLORS` also still list the categories twice.
+  counts the word, not the category). Share one rule through the build in a later phase. (The
+  category lists of the Feed chips and `CAT_COLORS` are now one palette: done in Phase 03.)
 
 These phase tasks track delivery. The audit items below retain the findings and measurements.
 Close an audit item only when all of its assigned work passes the brief's checks.
@@ -40,10 +40,10 @@ The audit changed no application code or data. Items below need implementation a
 - [x] **P2 — Workflow no-change path:** the month extraction pipeline exits 1 when ingest
   prints `no new data`. Reproduced under Bash with `-e -o pipefail`. Handle an empty match
   explicitly without hiding ingest failures. This is separate from the deferred VPS work.
-- [ ] **P2 — Filter state:** feed chips show All after selecting Meteo, although 583 rows
+- [x] **P2 — Filter state:** feed chips show All after selecting Meteo, although 583 rows
   remain selected. `renderFeed` resets `feedChipFilter`. Derive the active chip from state.
   Show active filters across views, including facets hidden by Briefing mode.
-- [ ] **P2 — Place identity:** Local chips use extracted text; map points use resolved
+- [x] **P2 — Place identity:** Local chips use extracted text; map points use resolved
   SIRUTA places. Harghita has 23 alerts with resolved Toplița, but no chip with that exact
   name. Use SIRUTA for selection and canonical display names. Keep text candidates distinct.
 - [ ] **P2 — Accessibility:** table rows, sort headers, and feed cards need keyboard actions.
@@ -53,6 +53,7 @@ The audit changed no application code or data. Items below need implementation a
 - [ ] **P2 — Browse and share:** table truncates at 500 of 3,385 rows with no pagination.
   Feed creates 3,385 cards and 48,923 DOM elements. Add pagination and filtered export.
   Store view, filters, county, locality, and record id in the URL. Support browser Back.
+  Phase 03 did the URL and Back part (`js/urlstate.js`). Open for Phase 06: pagination and export.
 - [x] **P2 — Pipeline validation:** add offline CI for workbook fixtures, delivery conservation,
   unique ids, valid dates, supported statuses, and compact/restore parity. Fail on conflicting
   duplicate ids. Stage CSV and manifest changes before replacing the current snapshot.
@@ -69,12 +70,27 @@ The audit changed no application code or data. Items below need implementation a
 - [ ] **P3 — Small architecture changes:** consolidate the two facet definitions and category
   colours. Render once on language changes. Preserve map and chart instances on filtering.
   Add a data schema version, build input hashes, and a visible load-error state.
-- [ ] **P3 — Language and provenance:** normalize diacritics for search and include resolved
+  Done: one facet registry, one category palette, one render per language change (Phase 03);
+  schema version and input hashes (Phase 02). Open for Phase 06: keep map and chart instances
+  on filtering, and the visible load-error state.
+- [x] **P3 — Language and provenance:** normalize diacritics for search and include resolved
   place names. Translate derived category labels. Recognize English-only messages instead
   of storing them as Romanian. Label source last_modified separately from last ingest.
 - [ ] **P3 — Build inputs and memory:** keep or document the source county geometry needed
   to regenerate geo.js; it is currently ignored. Reconcile stale sizes and duplicate tasks
   below. Current alerts.js is 4,531,815 bytes; gzip default level gives 466,525 bytes.
+  (After Phase 03: `alerts.js` is 4,664,511 bytes.)
+
+- [ ] Phase 03 follow-up: three alerts keep English text in `locations` because the location
+  extraction still reads the earlier splitter's Romanian half (`9483912b17c5`, `e104d8bef73e`,
+  `2d5537664f07`; for example the street "Jiului" from the English tail). The brief did not authorize a
+  `locations` change. Switch `extract_locations` to `msg_ro` in a later phase and report that diff.
+- [ ] Phase 03 follow-up: 423 alerts (Alba, Covasna, Harghita, Mureș) add a Hungarian text after the
+  Romanian one (matched by four Hungarian words). 267 have `message_language` `ro` and 156 have
+  `mixed`; in both, `msg_ro` holds the Hungarian text too. The brief allows only ro, en, mixed and
+  unknown. Add Hungarian evidence only after an owner decision.
+- [ ] Phase 03 follow-up: the Local view lists every resolved place in a disclosure, so the long
+  list holds a second copy of the top chips. Phase 04 decides the keyboard and screen-reader form.
 
 ## Ingest
 

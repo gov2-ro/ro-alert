@@ -1,19 +1,7 @@
 /* Bootstrap, state management, view routing, chrome event wiring. */
 
-window.state = {
-  lang: "ro",
-  view: "dashboard",
-  filters: {},
-  search: "",
-  dateFrom: null,
-  dateTo: null,
-  selectedCounty: null,
-  selectedLocality: null,
-};
-
-/* Initialize filter sets from FACET_DEFS_V2 (or v1 FACET_DEFS as fallback) */
-const defs = typeof FACET_DEFS_V2 !== "undefined" ? FACET_DEFS_V2 : (typeof FACET_DEFS !== "undefined" ? FACET_DEFS : []);
-defs.forEach((d) => (state.filters[d.field] = new Set()));
+/* One state object. The URL hash, the controls and every view derive from it. */
+window.state = newState();
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? "" : s)
@@ -51,118 +39,252 @@ function locChips(locs, opts = {}) {
 }
 
 /* ---- init ---- */
+let currentRows = [];
+let lastHash = "";            // the canonical hash that matches the current state
+let notices = [];             // [{id, code, args}] shown above the view
+let noticeSeq = 0;
+let pushedRecord = null;      // record id whose history entry this page session pushed
+let _ctx = null;
+
+function getCtx() { return _ctx || (_ctx = urlContext()); }
+
 async function init() {
   await loadData();
-  applyI18n();
   buildSidebar();
   // Map is initialized in renderDashboard (when #map div exists)
   RoMap.onCountyClick = onCountyClick;
-  RoMap.onPlaceClick = onPlaceClick;
+  RoMap.onPlaceClick = selectPlace;
   wireChrome();
   renderDateLabel();
-  render();
+  loadFromHash(currentHash(), true);
 }
 
 function renderDateLabel() {
   const m = DATA.meta;
   const el = document.getElementById("daterange-label");
   if (!el || !m.date_min) return;
-  const fmt = (iso) => iso.slice(0, 10);
-  el.textContent = `${fmt(m.date_min)} → ${fmt(m.date_max)}`;
+  el.textContent = `${m.date_min.slice(0, 10)} → ${m.date_max.slice(0, 10)}`;
+}
+
+/* The footer range follows the language: "februarie 2026 – august 2026". */
+function renderFooterRange() {
+  const el = document.getElementById("footer-range");
+  const m = DATA.meta;
+  if (!el || !m || !m.date_min) return;
+  const f = (iso) => `${monthName(+iso.slice(5, 7)).toLowerCase()} ${iso.slice(0, 4)}`;
+  el.textContent = `(${f(m.date_min)} – ${f(m.date_max)})`;
+}
+
+/* ---- one update path ----
+   Every change to `state` ends in update(): it normalizes the state, syncs every control from
+   it, renders the view and writes the URL. `mode` is "push" (a deliberate step: a new history
+   entry), "replace" (typing, language, sort: no new entry) or "none" (history events). */
+function update(mode, opts = {}) {
+  normalizeState(state, getCtx());
+  syncControls();
+  if (opts.render !== false) render();
+  syncDrawer();
+  if (mode !== "none") writeUrl(mode, opts.historyState);
+}
+
+function currentHash() { return (location.hash || "").replace(/^#/, ""); }
+
+function writeUrl(mode, historyState) {
+  const h = encodeState(state);
+  if (h === lastHash) return;
+  const url = h ? "#" + h : location.pathname + location.search;
+  try {
+    if (mode === "push") history.pushState(historyState || null, "", url);
+    else history.replaceState(historyState || history.state || null, "", url);
+  } catch (e) {
+    try { location.hash = h; } catch (e2) { /* the page still works without a link */ }
+  }
+  lastHash = h;
+}
+
+/* Replace the state with the one a hash describes, then draw. History events and the first
+   load both come here. A hash with unusable parts is replaced by its canonical form. */
+function loadFromHash(h, initial) {
+  const r = decodeHash(h, getCtx());
+  Object.assign(state, r.state);
+  notices = r.notices.map((n) => ({ id: ++noticeSeq, code: n.code, args: n.args }));
+  update("none");
+  const canonical = encodeState(state);
+  lastHash = canonical;
+  if (canonical !== h) {
+    try { history.replaceState(history.state, "", canonical ? "#" + canonical : location.pathname + location.search); } catch (e) { /* ignore */ }
+  }
+  if (!initial) pushedRecord = null;
+}
+
+function onHistory() {
+  if (currentHash() === lastHash) return;     // our own write, or the second of two events
+  loadFromHash(currentHash(), false);
 }
 
 /* ---- chrome wiring ---- */
 function wireChrome() {
-  // Language toggle
   document.getElementById("langtoggle").addEventListener("click", (e) => {
-    const b = e.target.closest(".lbtn"); if (!b) return;
+    const b = e.target.closest(".lbtn"); if (!b || state.lang === b.dataset.lang) return;
     state.lang = b.dataset.lang;
-    document.querySelectorAll(".lbtn").forEach((x) => x.classList.toggle("active", x === b));
-    applyI18n();
-    relabelDynamic();
-    render();
+    update("replace");
   });
 
-  // View tabs
   document.getElementById("view-tabs").addEventListener("click", (e) => {
     const b = e.target.closest(".view-tab"); if (!b || b.disabled) return;
     state.view = b.dataset.view;
-    document.querySelectorAll(".view-tab").forEach((x) => x.classList.toggle("active", x === b));
-    if (state.view !== "location") { state.selectedCounty = null; state.selectedLocality = null; }
-    render();
+    state.page = 1;
+    update("push");
   });
 
-  // Search
   let searchTimer;
   document.getElementById("search").addEventListener("input", (e) => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { state.search = e.target.value; render(); }, 250);
+    const value = e.target.value;
+    searchTimer = setTimeout(() => { state.search = value; state.page = 1; update("replace"); }, 250);
   });
 
-  // Clear all (topnav button)
   document.getElementById("btn-clear-all").addEventListener("click", clearAll);
-
-  // Clear all (sidebar button)
   document.getElementById("sidebar-clear").addEventListener("click", clearAll);
 
-  // Drawer close
   document.getElementById("drawer-close").addEventListener("click", closeDrawer);
   document.getElementById("drawer-overlay").addEventListener("click", closeDrawer);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+  // The strip and the notices sit outside the view content, so they survive every render.
+  document.getElementById("active-strip").addEventListener("click", (e) => {
+    if (e.target.closest("[data-strip-reset]")) { clearAll(); return; }
+    const btn = e.target.closest("[data-strip-index]"); if (!btn) return;
+    const item = activeFilterItems(state)[Number(btn.dataset.stripIndex)];
+    if (!item) return;
+    removeFilterItem(state, item);
+    state.page = 1;
+    update("push");
+  });
+  document.getElementById("notices").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-notice]"); if (!btn) return;
+    notices = notices.filter((n) => String(n.id) !== btn.dataset.notice);
+    renderNotices();
+  });
+
+  window.addEventListener("popstate", onHistory);
+  window.addEventListener("hashchange", onHistory);
 }
 
+/* Clear every data filter and the Local scope. View, language and the open record stay. */
 function clearAll() {
   Object.values(state.filters).forEach((s) => s.clear());
-  document.querySelectorAll("#facets input[type=checkbox]").forEach((cb) => (cb.checked = false));
-  state.search = ""; document.getElementById("search").value = "";
-  const min = DATA.meta.date_min ? DATA.meta.date_min.slice(0, 10) : "";
-  const max = DATA.meta.date_max ? DATA.meta.date_max.slice(0, 10) : "";
+  state.search = "";
   state.dateFrom = null; state.dateTo = null;
-  const df = document.getElementById("date-from");
-  const dt = document.getElementById("date-to");
-  if (df) df.value = min;
-  if (dt) dt.value = max;
-  state.selectedCounty = null; state.selectedLocality = null;
-  if (state.view === "location") {
-    state.view = "dashboard";
-    document.querySelectorAll(".view-tab").forEach((t) => t.classList.toggle("active", t.dataset.view === "dashboard"));
-    document.getElementById("view-tabs").querySelector("[data-view='location']").disabled = true;
-  }
-  render();
+  state.selectedCounty = null; state.selectedPlaceId = null;
+  state.page = 1;
+  update("push");
 }
 
-function relabelDynamic() {
-  // i18n elements in sidebar (facet headers, tabs) use data-i18n, so applyI18n handles them.
-  // But sidebar stats and view content need a full re-render.
+/* ---- controls derive from state ---- */
+function syncControls() {
+  document.querySelectorAll(".lbtn").forEach((x) => x.classList.toggle("active", x.dataset.lang === state.lang));
   applyI18n();
-  render();
+  renderFooterRange();
+  const scoped = !!state.selectedCounty || state.selectedPlaceId != null;
+  document.querySelectorAll(".view-tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.view === state.view);
+    if (b.dataset.view === "location") b.disabled = !scoped;
+  });
+  syncSidebar();
+  renderStrip();
+  renderNotices();
 }
 
-/* ---- county click -> drill into Location ---- */
+/* The strip lists every active data filter, including those a hidden facet holds. */
+function renderStrip() {
+  const host = document.getElementById("active-strip");
+  if (!host) return;
+  const items = activeFilterItems(state);
+  const range = datesOutsideDetail();
+  if (!items.length && !range) { host.innerHTML = ""; host.hidden = true; return; }
+  host.hidden = false;
+  const chips = items.map((it, i) => {
+    const full = it.group ? `${it.group}: ${it.text}` : it.text;
+    return `<span class="strip-chip"><span class="strip-text">${esc(full)}</span>` +
+      `<button type="button" class="strip-x" data-strip-index="${i}" aria-label="${esc(t("strip_remove").replace("%s", full))}">&times;</button></span>`;
+  }).join("");
+  const reset = items.length ? `<button type="button" class="link-btn strip-reset" data-strip-reset>${t("strip_reset")}</button>` : "";
+  const note = range ? `<p class="strip-note">${esc(range)}</p>` : "";
+  host.innerHTML = `<div class="strip-row"><span class="strip-label">${t("strip_label")}</span>${chips}${reset}</div>${note}`;
+}
+
+/* Text that explains a date bound outside the detailed messages. The value is kept, never clamped. */
+function datesOutsideDetail() {
+  const m = DATA.meta;
+  if (!m || !m.date_min) return "";
+  const min = m.date_min.slice(0, 10), max = m.date_max.slice(0, 10);
+  if ((state.dateFrom && state.dateFrom < min) || (state.dateTo && state.dateTo > max)) {
+    return t("notice_dates_outside").replace("%a", min).replace("%b", max);
+  }
+  return "";
+}
+
+function renderNotices() {
+  const host = document.getElementById("notices");
+  if (!host) return;
+  host.hidden = !notices.length;
+  host.innerHTML = notices.map((n) => {
+    let msg = t("notice_" + n.code);
+    n.args.forEach((a) => { msg = msg.replace("%s", esc(a)); });
+    return `<div class="notice" role="status"><span>${msg}</span>` +
+      `<button type="button" class="notice-x" data-notice="${n.id}" aria-label="${esc(t("notice_dismiss"))}">&times;</button></div>`;
+  }).join("");
+}
+
+function addNotice(code, args) {
+  notices.push({ id: ++noticeSeq, code, args: args || [] });
+  renderNotices();
+}
+
+/* ---- navigation helpers ---- */
+
+/* County click -> Local view for the issuer county. No place is selected. */
 function onCountyClick(name) {
   const match = Object.keys(DATA.meta.judet_counts).find((j) => countyKey(j) === countyKey(name));
   if (!match) return;
   state.selectedCounty = match;
-  state.selectedLocality = null;
+  state.selectedPlaceId = null;
   state.view = "location";
-  document.querySelectorAll(".view-tab").forEach((t) => t.classList.toggle("active", t.dataset.view === "location"));
-  const locTab = document.getElementById("view-tabs").querySelector("[data-view='location']");
-  if (locTab) locTab.disabled = false;
-  render();
+  state.page = 1;
+  update("push");
 }
 
-/* ---- map point click -> Location view, filtered by that locality ----
-   Reuses state.selectedLocality; applyFilters matches it against places[].name too. */
-function onPlaceClick(judet, name) {
-  onCountyClick(judet);
-  state.selectedLocality = name;
-  render();
+/* Place choice (map point, Local chip, top-place link). The place scopes by SIRUTA code within
+   the current global filters. From the Local view the county scope stays; from any other view
+   no county is added, so nationally issued alerts at the place stay in. */
+function selectPlace(siruta) {
+  const id = Number(siruta);
+  if (!DATA.places.has(id)) return;
+  if (state.view !== "location") state.selectedCounty = null;
+  state.selectedPlaceId = id;
+  state.view = "location";
+  state.page = 1;
+  update("push");
+}
+
+function clearPlace() {
+  state.selectedPlaceId = null;
+  state.page = 1;
+  update("push");
+}
+
+/* Leave the Local view for the overview. */
+function leaveLocal() {
+  state.selectedCounty = null;
+  state.selectedPlaceId = null;
+  state.view = "dashboard";
+  state.page = 1;
+  update("push");
 }
 
 /* ---- main render ---- */
-let currentRows = [];
 function render() {
-  // applyFilters handles county + locality scoping for the location view.
   currentRows = applyFilters(DATA.alerts, state);
 
   const main = document.getElementById("content-main");
@@ -171,8 +293,10 @@ function render() {
   destroyMap();
   main.innerHTML = "";
 
-  if (!currentRows.length) {
-    main.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${t("no_results")}</p></div>`;
+  if (state.view === "location") {
+    renderLocation(currentRows, main);       // draws its own heading, also with no records
+  } else if (!currentRows.length) {
+    renderEmpty(main);
   } else if (state.view === "story") {
     renderStory(currentRows, main);
   } else if (state.view === "dashboard") {
@@ -181,13 +305,17 @@ function render() {
     renderTable(currentRows, main);
   } else if (state.view === "feed") {
     renderFeed(currentRows, main);
-  } else if (state.view === "location" && state.selectedCounty) {
-    renderLocation(currentRows, state.selectedCounty, main);
   }
 
-  // Always update sidebar
   renderSidebarStats(currentRows);
   document.getElementById("result-count").textContent = `${currentRows.length} ${t("results")}`;
+}
+
+/* No records: keep the filters usable. The search box and the strip stay outside this area. */
+function renderEmpty(main) {
+  main.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${t("no_results")}</p>` +
+    `<button type="button" class="link-btn" id="empty-clear">${t("empty_clear")}</button></div>`;
+  document.getElementById("empty-clear").addEventListener("click", clearAll);
 }
 
 /* ---- utility functions (shared across modules) ---- */
@@ -212,53 +340,98 @@ function statusBadge(a) {
 
 function cssEsc(s) { return s.replace(/["\\]/g, "\\$&"); }
 
-/* ---- detail drawer ---- */
+/* ---- detail drawer ----
+   The open record is state (`state.record`, key `record` in the URL). Opening it changes no
+   data filter. A record link may point at an alert outside the current selection; the drawer
+   says so. */
+let drawerKey = null;
+
 function openDrawer(id) {
-  const a = DATA.alerts.find((x) => x.id === id);
-  if (!a) return;
+  if (!DATA.alerts.some((x) => x.id === id)) return;
+  const already = !!state.record;
+  state.record = id;
+  if (!already) pushedRecord = id;
+  update(already ? "replace" : "push", { render: false, historyState: already ? null : { rec: id } });
+}
+
+function closeDrawer() {
+  if (!state.record) return;
+  if (pushedRecord === state.record && history.state && history.state.rec === state.record) {
+    pushedRecord = null;
+    history.back();             // the popstate handler clears the record and closes the drawer
+    return;
+  }
+  pushedRecord = null;
+  state.record = null;
+  update("replace", { render: false });
+}
+
+/* Show or hide the drawer from `state.record`. Rebuild it only when its content would change. */
+function syncDrawer() {
+  const drawer = document.getElementById("drawer");
+  const overlay = document.getElementById("drawer-overlay");
+  const a = state.record ? DATA.alerts.find((x) => x.id === state.record) : null;
+  if (!a) {
+    drawer.classList.add("hidden"); overlay.classList.add("hidden");
+    drawerKey = null;
+    return;
+  }
+  const inSelection = currentRows.some((r) => r.id === a.id);
+  const key = `${a.id}|${state.lang}|${inSelection}`;
+  if (key !== drawerKey) { fillDrawer(a, inSelection); drawerKey = key; }
+  drawer.classList.remove("hidden"); overlay.classList.remove("hidden");
+}
+
+function fillDrawer(a, inSelection) {
   const metaRows = [
     ["f_initiator", a.initiator], ["f_judet", a.judet],
-    ["f_risk_category", a.risk_category], ["f_risc_principal", a.risc_principal],
+    ["f_risk_category", a.risk_category ? catLabel(a.risk_category) : null], ["f_risc_principal", a.risc_principal],
     ["f_risc_asociat", a.risc_asociat], ["f_severitate", a.severitate],
     ["f_urgenta", a.urgenta], ["f_categorie", a.categorie],
     ["f_tip_mesaj", a.tip_mesaj], ["f_cod_eveniment", a.cod_eveniment],
     ["f_tip_inregistrare", a.tip_inregistrare], ["f_audienta", a.audienta],
-    ["f_meteo_color", a.meteo_color], ["f_status", a.status_trimitere],
+    ["f_meteo_color", a.meteo_color ? facetValueLabel("meteo_color", a.meteo_color) : null], ["f_status", a.status_trimitere],
     ["f_repeats", a.nr_repetitii], ["f_source", a.source_file],
   ].filter(([, v]) => v);
 
   // Extracted-entity chips (real fields only)
   const chips = [
-    a.risk_category && { v: a.risk_category, k: t("f_risk_category"), color: catColor(a.risk_category) },
-    a.meteo_color && { v: a.meteo_color, k: t("f_meteo_color") },
+    a.risk_category && { v: catLabel(a.risk_category), k: t("f_risk_category"), color: catColor(a.risk_category) },
+    a.meteo_color && { v: facetValueLabel("meteo_color", a.meteo_color), k: t("f_meteo_color") },
     a.severitate && { v: a.severitate, k: t("f_severitate") },
     a.localities && a.localities.length && { v: a.localities.length, k: t("ent_places") },
-    a.scope && { v: t(a.scope === "national" ? "scope_national" : "scope_county"), k: "scope" },
-    a.is_cancel && { v: t("status_cancel"), k: "lifecycle" },
+    a.scope && { v: t(a.scope === "national" ? "scope_national" : "scope_county"), k: t("f_scope") },
+    a.is_cancel && { v: t("status_cancel"), k: t("f_lifecycle") },
   ].filter(Boolean);
   const chipsHtml = chips.map((c) =>
     `<span class="ent-chip">${c.color ? `<span class="dot" style="background:${c.color}"></span>` : ""}<b>${esc(String(c.v))}</b><span class="ent-k">${esc(c.k)}</span></span>`
   ).join("");
 
-  // Per-message RO/EN toggle (defaults to active UI language, falls back when missing)
-  const msgRo = a.msg_ro || a.msg || "";
-  const msgEn = a.msg_en && a.msg_en !== a.msg_ro ? a.msg_en : "";
-  const startLang = state.lang === "en" && msgEn ? "en" : "ro";
+  // Message: the requested language when it exists, else the original with a reason.
+  const view = messageView(a, state.lang);
+  const hasRo = !!a.msg_ro, hasEn = !!a.msg_en;
+  const note = (v) => v.fallback === "unsplit" ? t("drawer_unsplit") : v.fallback === "missing" ? t("drawer_fallback") : "";
+  const ml = a.message_language ? t("msglang_" + a.message_language) : "";
+  const places = a.places || [];
 
   document.getElementById("drawer-body").innerHTML = `
-    <div class="drawer-title">${esc(a.title || a.risk_category)}</div>
+    <div class="drawer-title">${esc(a.title || (a.risk_category ? catLabel(a.risk_category) : ""))}</div>
     <div class="drawer-sub">${esc(a.judet || "")} · ${esc(a.initiator || "")} · ${fmtTime(a.sent_at)}</div>
+    ${inSelection ? "" : `<p class="drawer-context" id="drawer-context">${t("drawer_outside")}</p>`}
     <div class="status-row">${statusBadge(a)} ${sevBadge(a.severitate)}</div>
     ${chipsHtml ? `<div class="drawer-eyebrow">${t("drawer_entities")}</div><div class="drawer-chips">${chipsHtml}</div>` : ""}
     <div class="drawer-cols">
       <div class="drawer-col">
         <div class="msg-head"><h3>${t("detail_message")}</h3>
           <div class="msg-toggle">
-            <button class="mt-btn${startLang === "ro" ? " active" : ""}" data-lang="ro">RO</button>
-            <button class="mt-btn${startLang === "en" ? " active" : ""}" data-lang="en"${msgEn ? "" : " disabled"}>EN</button>
+            <button class="mt-btn${view.shown === "ro" ? " active" : ""}" data-lang="ro"${hasRo ? "" : " disabled"}>RO</button>
+            <button class="mt-btn${view.shown === "en" ? " active" : ""}" data-lang="en"${hasEn ? "" : " disabled"}>EN</button>
           </div>
         </div>
-        <div class="msg-block" id="drawer-msg">${esc(startLang === "en" ? msgEn : msgRo)}</div>
+        ${ml ? `<div class="msg-lang">${t("drawer_lang")}: ${esc(ml)}</div>` : ""}
+        <div class="msg-block" id="drawer-msg">${esc(view.text)}</div>
+        <div class="msg-note" id="drawer-msg-note">${esc(note(view))}</div>
+        ${places.length ? `<h3>${t("detail_places")}</h3><div>${places.map((p) => `<span class="pill">${esc(placeLabel(p.siruta, true))}</span>`).join("")}</div>` : ""}
         ${a.localities && a.localities.length ? `<h3>${t("detail_localities")}</h3><div>${a.localities.map((l) => `<span class="pill">${esc(l)}</span>`).join("")}</div>` : ""}
         ${(() => { const extra = (a.locations || []).filter((l) => l.type !== "locality"); return extra.length ? `<h3>${t("detail_locations")}</h3><div class="loc-chips">${locChips(extra)}</div>` : ""; })()}
         ${a.poligoane ? `<h3>${t("detail_polygons")}</h3><div>${a.poligoane.split(",").map((p) => `<span class="pill">${esc(p.trim())}</span>`).join("")}</div>` : ""}
@@ -271,24 +444,20 @@ function openDrawer(id) {
       </div>
     </div>`;
 
-  // Wire message language toggle (in-place, no global re-render)
+  // Wire the message language toggle (in place, no global re-render)
   const msgEl = document.getElementById("drawer-msg");
+  const noteEl = document.getElementById("drawer-msg-note");
   document.querySelectorAll(".msg-toggle .mt-btn").forEach((b) => {
     b.addEventListener("click", () => {
       if (b.disabled) return;
       document.querySelectorAll(".msg-toggle .mt-btn").forEach((x) => x.classList.toggle("active", x === b));
-      msgEl.textContent = b.dataset.lang === "en" ? (msgEn || msgRo) : msgRo;
+      const v = messageView(a, b.dataset.lang);
+      msgEl.textContent = v.text;
+      noteEl.textContent = note(v);
     });
   });
-
-  document.getElementById("drawer").classList.remove("hidden");
-  document.getElementById("drawer-overlay").classList.remove("hidden");
 }
 
-function closeDrawer() {
-  document.getElementById("drawer").classList.add("hidden");
-  document.getElementById("drawer-overlay").classList.add("hidden");
-}
-
-/* ---- boot ---- */
-init();
+/* ---- boot ---- the footer follows the scripts, so wait until the page is parsed */
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+else init();

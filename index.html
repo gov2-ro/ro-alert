@@ -53,13 +53,19 @@
         <span id="result-count" class="result-count"></span>
         <button id="sidebar-clear" class="link-btn" data-i18n="sidebar_clear">Resetează filtrele</button>
       </div>
+      <p class="facet-note" data-i18n="facet_counts_note">Numerele arată toate datele, nu selecția curentă.</p>
       <div id="facets" class="facets"></div>
       <div class="sidebar-stats" id="sidebar-stats"></div>
     </aside>
 
-    <main class="content" id="content-main">
-      <!-- Rendered by view modules -->
-    </main>
+    <div class="main-col">
+      <!-- Outside the replaceable view: every active filter, and notices about the link -->
+      <div class="active-strip" id="active-strip" hidden></div>
+      <div class="notices" id="notices" hidden></div>
+      <main class="content" id="content-main">
+        <!-- Rendered by view modules -->
+      </main>
+    </div>
   </div>
 
   <!-- ===== DETAIL DRAWER ===== -->
@@ -80,6 +86,7 @@
   <script src="js/stats.js"></script>
   <script src="js/data.js"></script>
   <script src="js/filters.js"></script>
+  <script src="js/urlstate.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/map.js"></script>
   <script src="js/sidebar.js"></script>
@@ -93,7 +100,8 @@
   <footer class="site-footer"><mark>Proof of Concept</mark> &middot;
     <span data-i18n="footer_source">Surse date:</span>
     <a href="https://data.gov.ro/ro/dataset?q=mesaje+ro-alert&organization=inspectoratul-general-pentru-situatii-de-urgenta" target="_blank" rel="noopener">data.gov.ro · mesaje RO-ALERT · IGSU</a>
-    <span class="footer-range">(februarie – august 2026)</span> · | · Acesta <b>NU ESTE un proiect oficial al Guvernului României</b>. Date preluate de pe <a style="" href="https://data.gov.ro/ro/dataset?q=mesaje+ro-alert&organization=inspectoratul-general-pentru-situatii-de-urgenta">data.gov.ro / IGSU</a>
+    <span class="footer-range" id="footer-range">(februarie – august 2026)</span> · | ·
+    <span data-i18n-html="footer_disclaimer">Acesta <b>NU ESTE un proiect oficial al Guvernului României</b>. Date preluate de pe <a href="https://data.gov.ro/ro/dataset?q=mesaje+ro-alert&organization=inspectoratul-general-pentru-situatii-de-urgenta">data.gov.ro / IGSU</a>.</span>
   </footer>
     <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
     <noscript><img src="https://queue.simpleanalyticscdn.com/noscript.gif" alt="" referrerpolicy="no-referrer-when-downgrade"/></noscript>

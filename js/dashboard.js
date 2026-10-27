@@ -59,7 +59,7 @@ function renderDashboardKpis(rows) {
   const topCat = [...catM.entries()].sort((a, b) => b[1] - a[1])[0];
   host.innerHTML = `
     <div class="kpi"><div class="v">${total}</div><div class="k">${t("kpi_total")}</div></div>
-    <div class="kpi accent"><div class="v">${topCat ? topCat[1] : 0}</div><div class="k">${t("kpi_toprisk")}</div><div class="sub">${topCat ? esc(topCat[0]) : "—"}</div></div>
+    <div class="kpi accent"><div class="v">${topCat ? topCat[1] : 0}</div><div class="k">${t("kpi_toprisk")}</div><div class="sub">${topCat ? esc(catLabel(topCat[0])) : "—"}</div></div>
     <div class="kpi"><div class="v">${sent}</div><div class="k">${t("kpi_sent")}</div></div>
     ${failureKpisHtml(rows)}
   `;

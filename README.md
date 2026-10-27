@@ -25,7 +25,8 @@ The tests need no network. Run them from the repository root.
 - Browser smoke test from `file://` (development only): run `npm install` once. It installs
   `playwright-core` and downloads no browser. Then run `node tests/browser/smoke.cjs`. The test
   uses the installed Google Chrome. Set `CHROME_PATH` when Chrome is in another place. Set
-  `SHOTS=/some/folder` to save screenshots.
+  `SHOTS=/some/folder` to save screenshots. The state, place, link and language checks (audit 03)
+  live in `tests/browser/state.cjs`; `smoke.cjs` runs them.
 
 ### Ingest workflow
 
@@ -40,3 +41,15 @@ The tests need no network. Run them from the repository root.
 
 `python3 tools/risk_change_report.py OLD_ALERTS_JSON` compares two builds by alert ID and writes
 `data/risk_changes.csv` (ignored by Git).
+
+`python3 tools/field_diff.py --dump OLD.json` writes the full alerts of the current inputs. Run it on
+the old commit, then `python3 tools/field_diff.py OLD.json --allow FIELD,FIELD` on the new one. The tool
+lists every changed field with its alert count and exits 1 on any field outside `--allow`, on a changed
+ID set, or on a changed delivery row.
+
+### Link format
+
+The page keeps its state in the URL hash: `#schema=1&view=feed&lang=en&f.risk_category=Meteo&from=2026-04-01`.
+Keys: `schema`, `view`, `lang`, `q`, `from`, `to`, `f.FIELD` (repeated), `county`, `place` (SIRUTA code),
+`record`, `sort`, `dir`, `page`. A key appears only when it is set or differs from its default; a default
+state has an empty hash. `js/urlstate.js` reads and writes the hash.

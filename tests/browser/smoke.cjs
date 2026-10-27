@@ -148,6 +148,8 @@ async function view(page, name) {
     }
   }
 
+  await require("./state.cjs")({ browser, check, URL, SHOTS });
+
   await browser.close();
   console.log(failures ? `\n${failures} check(s) failed` : "\nAll browser checks passed");
   process.exit(failures ? 1 : 0);

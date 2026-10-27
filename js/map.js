@@ -88,18 +88,18 @@ function updateMap(rows, selectedJudet) {
   }
 }
 
-/* Point layer: one circle per locality named in the polygon list of the selected alerts.
-   Radius grows with the count of alerts that name the locality. A point marks the locality
-   of the alert area, not the place of the event. */
+/* Point layer: one circle per resolved place (SIRUTA code) named in the polygon list of the
+   selected alerts. Radius grows with the count of alerts that name the place; an alert counts
+   once per place. A point marks the locality of the alert area, not the place of the event.
+   A click selects the place by code, within the current global filters. */
 function renderPlaces(rows) {
   if (RoMap.placeLayer) { RoMap.placeLayer.remove(); RoMap.placeLayer = null; }
   const byId = new Map();
   for (const a of rows) {
     for (const p of a.places || []) {
       let e = byId.get(p.siruta);
-      if (!e) { e = { p, n: 0, judets: new Map() }; byId.set(p.siruta, e); }
+      if (!e) { e = { p, n: 0 }; byId.set(p.siruta, e); }
       e.n++;
-      if (a.scope === "county") e.judets.set(a.judet, (e.judets.get(a.judet) || 0) + 1);
     }
   }
   const group = L.layerGroup();
@@ -110,9 +110,10 @@ function renderPlaces(rows) {
       color: "#9b1c1c", weight: 1, fillColor: "#d93b3b", fillOpacity: 0.55,
       bubblingMouseEvents: false,
     });
-    const judet = [...e.judets.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0])[0] || null;
-    m.bindTooltip(`<strong>${esc(e.p.name)}</strong><br>${e.n} ${t("legend_alerts")}`, { sticky: true });
-    m.on("click", () => { if (judet && RoMap.onPlaceClick) RoMap.onPlaceClick(judet, e.p.name); });
+    m.sirutaCode = e.p.siruta;
+    m.alertCount = e.n;
+    m.bindTooltip(`<strong>${esc(placeLabel(e.p.siruta, true))}</strong><br>${e.n} ${t("legend_alerts")}`, { sticky: true });
+    m.on("click", () => { if (RoMap.onPlaceClick) RoMap.onPlaceClick(e.p.siruta); });
     group.addLayer(m);
   }
   group.addTo(RoMap.map);

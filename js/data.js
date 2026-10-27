@@ -1,5 +1,5 @@
 /* Loads the enriched datasets. Exposes window.DATA = {alerts, meta, geo}. */
-const DATA = { alerts: [], meta: null, geo: null };
+const DATA = { alerts: [], meta: null, geo: null, places: new Map(), placeNameCount: new Map() };
 
 /* Normalize a county name to a diacritic-free lowercase key so data județe
    ("Argeș", "București-Ilfov") match GeoJSON names ("Arges", "Bucuresti"). */
@@ -22,6 +22,7 @@ async function loadData() {
     DATA.meta = window.META;
     DATA.geo = window.GEO;
     restoreAlerts(DATA.alerts, DATA.meta.omitted);
+    indexPlaces(DATA.alerts);
     return DATA;
   }
   const [alerts, meta, geo] = await Promise.all([
@@ -33,7 +34,49 @@ async function loadData() {
   DATA.meta = meta;
   DATA.geo = geo;
   restoreAlerts(DATA.alerts, DATA.meta.omitted);
+  indexPlaces(DATA.alerts);
   return DATA;
+}
+
+/* Index of resolved places by SIRUTA code: canonical name, county, coordinates. `n` counts the
+   alerts that name the place (an alert names a code at most once). `placeNameCount` counts
+   the distinct codes behind each name, to know when a name needs its county. */
+function indexPlaces(alerts) {
+  DATA.places = new Map();
+  DATA.placeNameCount = new Map();
+  for (const a of alerts) {
+    for (const p of a.places || []) {
+      let e = DATA.places.get(p.siruta);
+      if (!e) {
+        e = { siruta: p.siruta, name: p.name, county: p.county || null, lat: p.lat, lon: p.lon, n: 0 };
+        DATA.places.set(p.siruta, e);
+        DATA.placeNameCount.set(p.name, (DATA.placeNameCount.get(p.name) || 0) + 1);
+      }
+      e.n++;
+    }
+  }
+}
+
+/* Display name of a resolved place. The county follows the name when another place has the
+   same name, or when `always` is true. Returns "" for an unknown code. */
+function placeLabel(siruta, always) {
+  const e = DATA.places.get(Number(siruta));
+  if (!e) return "";
+  const clash = (DATA.placeNameCount.get(e.name) || 0) > 1;
+  return e.county && (clash || always) ? `${e.name} (${e.county})` : e.name;
+}
+
+/* The text of an alert in the requested language, with the reason when it is not that language.
+   Returns {text, shown, fallback}: shown is "ro", "en" or "original"; fallback is "missing"
+   (the requested language has no text and an original of another language is shown),
+   "unsplit" (the original could not be split by language) or null. */
+function messageView(a, lang) {
+  const original = a.msg || a.msg_ro || a.msg_en || "";
+  const want = lang === "en" ? a.msg_en : a.msg_ro;
+  if (want) return { text: want, shown: lang === "en" ? "en" : "ro", fallback: null };
+  const l = a.message_language;
+  if (l === "mixed" || l === "unknown") return { text: original, shown: "original", fallback: "unsplit" };
+  return { text: original, shown: "original", fallback: "missing" };
 }
 
 const WEEKDAYS_RO = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
@@ -56,14 +99,15 @@ function restoreKey(obj, segs, def) {
 
 /* build_data.py writes a compact bundle. This function restores the old shape, in place:
    - keys with an empty value (null, "" or []) that `omitted` lists (path -> value);
-   - `msg`, rebuilt as msg_ro + (msg_sep or " ") + msg_en, when the bundle omits it;
+   - `msg`, rebuilt as msg_ro + (msg_sep or " ") + msg_en (or msg_en alone for English-only
+     text), when the bundle omits it;
    - `date`, `hour` and `weekday`, derived from `sent_at`. */
 function restoreAlerts(alerts, omitted) {
   const paths = Object.entries(omitted || {}).map(([p, def]) => [p.split("."), def]);
   for (const a of alerts) {
     for (const [segs, def] of paths) restoreKey(a, segs, def);
     if (!("msg" in a)) {
-      a.msg = a.msg_ro ? (a.msg_en ? a.msg_ro + (a.msg_sep ?? " ") + a.msg_en : a.msg_ro) : null;
+      a.msg = a.msg_ro ? (a.msg_en ? a.msg_ro + (a.msg_sep ?? " ") + a.msg_en : a.msg_ro) : (a.msg_en || null);
     }
     delete a.msg_sep;
     const s = a.sent_at;

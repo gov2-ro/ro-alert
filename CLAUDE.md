@@ -51,7 +51,9 @@ each row offline and without an LLM:
 - `judet_for` maps the initiator code (`ISUPH`) or an `ISU XX` title tag to a county.
   National actors (`IGSU`, `ANM`, …) get `scope="national"`.
 - `risk_category` and `meteo_color` derive the dashboard categories.
-- `split_bilingual` splits each message into `msg_ro` and `msg_en`.
+- `split_languages` sets `message_language` (`ro`, `en`, `mixed`, `unknown`) and splits a
+  message into `msg_ro` and `msg_en` only when the evidence is clear. `msg` stays the original.
+  `split_bilingual` (earlier splitter) still feeds `extract_locations`, so `locations` stay stable.
 - `extract_locations` reads only the Romanian half. It returns typed candidates
   (`locality`, `street`, `road`, `km`, `river`, `poi`). It does not geocode them.
 
@@ -63,20 +65,21 @@ after each rebuild, because the deployed app reads only them.
 
 **Front end.** The app is plain browser JS with no modules and no bundler. Each file in
 `js/` defines globals. `index.html` loads them in dependency order: vendor (Leaflet,
-Chart.js, vendored locally) → data bundles → `i18n` → `stats` → `data` → `filters` → views →
+Chart.js, vendored locally) → data bundles → `i18n` → `stats` → `data` → `filters` → `urlstate` → views →
 `app.js`. Keep this order when you add a file.
 
-- `app.js` owns `window.state` (language, view, facet sets, search, date range, selected
-  county and locality). `render()` runs `applyFilters` and draws the active view:
-  `dashboard`, `table`, `feed` or `location`. A click on a county opens the `location`
-  view.
+- `app.js` owns `window.state` (built by `newState()` in `urlstate.js`: language, view, facet sets,
+  search, date range, selected county, selected place as a SIRUTA code, open record, sort, page).
+  Every change ends in `update(mode)`, which normalizes the state, syncs the controls, calls `render()`
+  and writes the URL hash. `render()` runs `applyFilters` and draws the active view: `story`,
+  `dashboard`, `table`, `feed` or `location`. A click on a county or a place opens the `location` view.
 - `data.js` loads the globals into `DATA`. It falls back to `fetch()` of the JSON files.
   `countyKey()` normalizes county names (diacritics, București-Ilfov) to match the GeoJSON.
 - `filters.js` applies AND across facets and OR inside one facet.
-- Facets have two definitions: `FACET_DEFS` in `filters.js` (used by `applyFilters`) and
-  `FACET_DEFS_V2` in `sidebar.js` (used to draw the sidebar and initialize `state`).
-  Change both when you add or remove a facet. A facet also needs a key in `meta.facets`
-  (in `build_data.py`) and a label in `i18n.js`.
+- Facets have one definition: `FACET_REGISTRY` in `filters.js`. It drives `newState()`, `applyFilters`,
+  the sidebar, URL validation and the active-filter strip. A facet also needs a key in `meta.facets`
+  (in `build_data.py`) and a label in `i18n.js`. The category palette (`CATEGORIES`, `catColor`,
+  `catLabel`) is also in `filters.js`.
 - Every user-visible string goes through `t(key)` and `data-i18n` attributes in `i18n.js`.
 
 `_obsolete/` is not in use (git ignores it). Do not edit it. The repo root holds the only
