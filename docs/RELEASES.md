@@ -1,5 +1,6 @@
 # Releases
 
+- v0.14.0 — 2026-10-27 — Audit phase 05, visual and geographic architecture: coverage bar above every view; three overview cards instead of six; map modes for counties and localities with exact legends; visible national-alert count (488) and București-Ilfov convention; one reporting-quality section per view; neutral colours for monthly changes; whole-number chart axes.
 - v0.13.0 — 2026-10-27 — Deploy script: `tools/deploy.sh` copies the page files to a local folder or an SSH host, configured from `.env`.
 - v0.12.0 — 2026-10-27 — Audit phase 04, mobile and accessibility: filter drawer on phones, no horizontal overflow down to 320 px, stacked Feed summary; record details in a modal dialog with focus return; keyboard sort and record buttons; data tables behind every chart and a keyboard list for the map; text contrast at least 4.5:1; reduced motion. Browser suite with axe-core (dev only).
 - v0.11.0 — 2026-10-27 — Audit phase 03, shared state, places and language: one facet registry and one update path; active-filter strip in every view; places selected by SIRUTA code with canonical names; shareable URL hash with Back/Forward and record links; accent-insensitive search over place names; `message_language` per alert and a conservative bilingual split; category, month and footer labels in RO and EN.
