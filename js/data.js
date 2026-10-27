@@ -21,6 +21,7 @@ async function loadData() {
     DATA.alerts = window.ALERTS;
     DATA.meta = window.META;
     DATA.geo = window.GEO;
+    restoreAlerts(DATA.alerts, DATA.meta.omitted);
     return DATA;
   }
   const [alerts, meta, geo] = await Promise.all([
@@ -31,7 +32,49 @@ async function loadData() {
   DATA.alerts = alerts;
   DATA.meta = meta;
   DATA.geo = geo;
+  restoreAlerts(DATA.alerts, DATA.meta.omitted);
   return DATA;
+}
+
+const WEEKDAYS_RO = ["Luni", "Marți", "Miercuri", "Joi", "Vineri", "Sâmbătă", "Duminică"];
+
+/* Put back one omitted key. `segs` is a key path such as ["deliveries[]", "audienta"];
+   a segment that ends in "[]" is a list of objects. */
+function restoreKey(obj, segs, def) {
+  const seg = segs[0];
+  const isList = seg.endsWith("[]");
+  const key = isList ? seg.slice(0, -2) : seg;
+  if (segs.length === 1) {
+    if (!(key in obj)) obj[key] = Array.isArray(def) ? [] : def;
+    return;
+  }
+  const child = obj[key];
+  if (!child) return;
+  if (isList) for (const item of child) restoreKey(item, segs.slice(1), def);
+  else restoreKey(child, segs.slice(1), def);
+}
+
+/* build_data.py writes a compact bundle. This function restores the old shape, in place:
+   - keys with an empty value (null, "" or []) that `omitted` lists (path -> value);
+   - `msg`, rebuilt as msg_ro + (msg_sep or " ") + msg_en, when the bundle omits it;
+   - `date`, `hour` and `weekday`, derived from `sent_at`. */
+function restoreAlerts(alerts, omitted) {
+  const paths = Object.entries(omitted || {}).map(([p, def]) => [p.split("."), def]);
+  for (const a of alerts) {
+    for (const [segs, def] of paths) restoreKey(a, segs, def);
+    if (!("msg" in a)) {
+      a.msg = a.msg_ro ? (a.msg_en ? a.msg_ro + (a.msg_sep ?? " ") + a.msg_en : a.msg_ro) : null;
+    }
+    delete a.msg_sep;
+    const s = a.sent_at;
+    if (s) {
+      a.date = s.slice(0, 10);
+      a.hour = parseInt(s.slice(11, 13), 10);
+      a.weekday = WEEKDAYS_RO[(new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)).getDay() + 6) % 7];
+    } else {
+      a.date = a.hour = a.weekday = null;
+    }
+  }
 }
 
 /* Delivery figures for a selection of alerts. An alert is one message; a delivery is one

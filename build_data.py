@@ -360,6 +360,147 @@ def norm(v):
     return v if v else None
 
 
+# ----- compact output (alerts, geometry) -----
+# The front end restores everything dropped here: see `restoreAlerts` in js/data.js.
+OMIT_KINDS = (None, "", [])
+DERIVED_FROM_SENT_AT = ("date", "hour", "weekday")
+
+
+def _is_omittable(v):
+    return v is None or v == "" or v == []
+
+
+def _collect_omittable(obj, path, kinds):
+    """Record, per key path, which empty values (null, "", []) appear. List items share the
+    path `name[]`, so the rule works for lists of objects too."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            p = f"{path}.{k}" if path else k
+            if _is_omittable(v):
+                kinds.setdefault(p, set()).add(json.dumps(v))
+            else:
+                _collect_omittable(v, p, kinds)
+    elif isinstance(obj, list):
+        for v in obj:
+            _collect_omittable(v, path + "[]", kinds)
+
+
+def _drop_paths(obj, path, drop):
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            p = f"{path}.{k}" if path else k
+            if p in drop and _is_omittable(v):
+                continue
+            out[k] = _drop_paths(v, p, drop)
+        return out
+    if isinstance(obj, list):
+        return [_drop_paths(v, path + "[]", drop) for v in obj]
+    return obj
+
+
+def msg_parts(a):
+    """Return (drop_msg, sep): `msg` can be rebuilt as msg_ro + sep + msg_en (sep is " " by
+    default). When it cannot, keep `msg`."""
+    msg, ro, en = a.get("msg"), a.get("msg_ro"), a.get("msg_en")
+    if msg is None and not ro:
+        return True, " "
+    if not msg or not ro:
+        return False, " "
+    if not en:
+        return msg == ro, " "
+    if len(msg) >= len(ro) + len(en) and msg.startswith(ro) and msg.endswith(en):
+        return True, msg[len(ro):len(msg) - len(en)]
+    return False, " "
+
+
+def compact_alerts(alerts):
+    """Build the compact alert list and the map of omitted paths to their empty value.
+    Drops: `msg` (when rebuildable), the fields derived from `sent_at`, and every key whose
+    value is null, "" or [] (only when that key has one kind of empty value everywhere)."""
+    slim = []
+    kept_msg = 0
+    for a in alerts:
+        b = {k: v for k, v in a.items() if k not in DERIVED_FROM_SENT_AT}
+        drop, sep = msg_parts(a)
+        if drop:
+            del b["msg"]
+            if sep != " " and a.get("msg_en"):
+                b["msg_sep"] = sep
+        elif a.get("msg"):
+            kept_msg += 1
+        slim.append(b)
+    kinds = {}
+    for b in slim:
+        _collect_omittable(b, "", kinds)
+    # a missing `msg` means "rebuild" (see msg_parts) and `msg_sep` may be "" on purpose,
+    # so never treat those two as omittable
+    omitted = {p: json.loads(next(iter(k))) for p, k in kinds.items()
+               if len(k) == 1 and p not in ("msg", "msg_sep")}
+    return [_drop_paths(b, "", omitted) for b in slim], omitted, kept_msg
+
+
+def _perp_dist2(p, a, b):
+    (px, py), (ax, ay), (bx, by) = p, a, b
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return (px - ax) ** 2 + (py - ay) ** 2
+    t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    return (px - (ax + t * dx)) ** 2 + (py - (ay + t * dy)) ** 2
+
+
+def douglas_peucker(pts, eps):
+    """Iterative Douglas-Peucker; keeps the first and last point."""
+    n = len(pts)
+    if n < 3:
+        return list(pts)
+    keep = [False] * n
+    keep[0] = keep[-1] = True
+    stack = [(0, n - 1)]
+    e2 = eps * eps
+    while stack:
+        i, j = stack.pop()
+        best, idx = -1.0, -1
+        for k in range(i + 1, j):
+            d = _perp_dist2(pts[k], pts[i], pts[j])
+            if d > best:
+                best, idx = d, k
+        if best > e2:
+            keep[idx] = True
+            stack.append((i, idx))
+            stack.append((idx, j))
+    return [p for p, kp in zip(pts, keep) if kp]
+
+
+GEO_DECIMALS = 4
+GEO_TOLERANCE = 0.002  # degrees (about 220 m north-south)
+
+
+def simplify_ring(ring, eps=GEO_TOLERANCE):
+    """Round to GEO_DECIMALS and simplify a closed ring; keep at least 4 points."""
+    pts = [(round(x, GEO_DECIMALS), round(y, GEO_DECIMALS)) for x, y in ring]
+    out = douglas_peucker(pts[:-1], eps) if pts[0] == pts[-1] else douglas_peucker(pts, eps)
+    if len(out) < 3:
+        out = pts[:3]
+    out.append(out[0])
+    return [list(p) for p in out]
+
+
+def simplify_geo(geo, eps=GEO_TOLERANCE):
+    def poly(rings):
+        return [simplify_ring(r, eps) for r in rings]
+    feats = []
+    for f in geo["features"]:
+        g = f["geometry"]
+        if g["type"] == "Polygon":
+            coords = poly(g["coordinates"])
+        else:
+            coords = [poly(p) for p in g["coordinates"]]
+        feats.append({**f, "geometry": {**g, "coordinates": coords}})
+    return {**geo, "features": feats}
+
+
 def main():
     files = sorted(glob.glob(os.path.join(SRC_DIR, "*.csv")))
     if not files:
@@ -534,9 +675,12 @@ def main():
         },
     }
 
+    slim, omitted, kept_msg = compact_alerts(alerts)
+    meta["omitted"] = omitted
+
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(os.path.join(OUT_DIR, "alerts.json"), "w", encoding="utf-8") as f:
-        json.dump(alerts, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(slim, f, ensure_ascii=False, separators=(",", ":"))
     with open(os.path.join(OUT_DIR, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
@@ -550,18 +694,18 @@ def main():
             json.dump(obj, fh, ensure_ascii=False, separators=(",", ":"))
             fh.write(";\n")
 
-    write_js("alerts.js", "ALERTS", alerts)
+    write_js("alerts.js", "ALERTS", slim)
     write_js("meta.js", "META", meta)
 
     geo_path = os.path.join(OUT_DIR, "romania-counties.geojson")
     if os.path.exists(geo_path):
         with open(geo_path, encoding="utf-8") as gf:
             geo = json.load(gf)
-        write_js("geo.js", "GEO", geo)
+        write_js("geo.js", "GEO", simplify_geo(geo))
     else:
         print("  WARNING: data/romania-counties.geojson missing -> data/geo.js not written")
 
-    print(f"  duplicates removed: {duplicates}")
+    print(f"  duplicates removed: {duplicates}; msg kept for {kept_msg} alerts")
     print(f"Wrote {len(alerts)} alerts -> data/alerts.json + data/*.js")
     print(f"  deliveries={meta['deliveries']} delivery_error={meta['delivery_error']}")
     print(f"  sent={meta['sent']} error={meta['error']} cancel={meta['cancel']}")
