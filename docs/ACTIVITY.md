@@ -1,5 +1,17 @@
 # Activity
 
+## 2026-10-27 — Review of the data-size branch (Opus)
+
+**Decided**
+- Accept `alerts.js` at 4.30 MB raw, above the 3.5 MB target in the brief. The network
+  cost is the gzip size, 398 KB (was 493 KB), and the parse of 4.3 MB is not a measured
+  problem. The 3.5 MB target was an estimate, not a requirement.
+- Do not apply the three shape changes (`locations[].type`, `deliveries[].sent_at`,
+  `localities`; about 390 KB together). Each saves less than 10% and changes what the
+  front end reads. Revisit only if a page-load measurement shows a problem.
+- Checked: a rebuild reproduces the committed bundles byte for byte; the KPIs render from
+  `file://` with the same values as `main`.
+
 ## 2026-10-27 — Smaller data bundle (branch `feat/data-size`)
 
 **Done**
