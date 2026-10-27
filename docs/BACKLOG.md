@@ -7,6 +7,11 @@
 - [ ] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`.
 - [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
   runs timed out on connect, 2026-10-27). Needs the VPS details from the owner.
+- [ ] Deploy script for lab.gov2.ro (Apache on 67.205.1.122). A daily cron job on the VPS
+  runs `ingest.py` and `build_data.py`, and publishes the static files to the web folder.
+  Publish without review when the manifest has no new warnings; hold the update and tell
+  the owner when it has. Push the new `sources/` and `data/*.js` to GitHub. Open: SSH user,
+  web folder, whether the VPS can reach data.gov.ro, the alert channel for a held update.
 - [x] The ingest step hid a failed `ingest.py` (pipe into `tee` without `pipefail`).
 
 - [x] Count alerts, not delivery rows (April has one row per channel and retry; 470 rows
