@@ -1,5 +1,22 @@
 # Activity
 
+## 2026-10-27 — Data size, deploy path, next briefs
+
+**Done**
+- Measured the bundle: `alerts.js` 7.2 MB raw, 0.5 MB gzip; `geo.js` 1.35 MB. `msg` repeats
+  `msg_ro` + `msg_en` (25% of the file).
+- Ran the ingest Action by hand (run 40526336961, and a re-run). Both runs timed out on the
+  connection to data.gov.ro, and both reported success. Added `set -o pipefail`.
+- lab.gov2.ro is an Apache server on 67.205.1.122, not GitHub Pages.
+- Wrote briefs: `data-size`, `localities`, `story-view`.
+
+**Decided**
+- Keep the JS globals; no CSV, no SQLite. Both need a server for `file://`, and SQLite
+  needs about 1 MB of WASM for 3,385 rows. The size is in duplicate text and null fields.
+- Run the scheduled update on the VPS, because GitHub-hosted runners cannot reach
+  data.gov.ro. Assumed, not measured: the VPS can reach data.gov.ro.
+- Accept the August Grand Total mismatch (owner decision).
+
 ## 2026-10-27 — Alert unit: count alerts, not delivery rows (branch `feat/alert-unit`)
 
 **Done**

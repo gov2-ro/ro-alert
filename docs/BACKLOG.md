@@ -2,6 +2,13 @@
 
 ## Ingest
 
+- [ ] Smaller data bundle. Brief: `docs/briefs/data-size.md`.
+- [ ] Localities from `Lista poligoane`, with a map layer. Brief: `docs/briefs/localities.md`.
+- [ ] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`.
+- [ ] Scheduled update on the VPS: GitHub-hosted runners cannot reach data.gov.ro (2 of 2
+  runs timed out on connect, 2026-10-27). Needs the VPS details from the owner.
+- [x] The ingest step hid a failed `ingest.py` (pipe into `tee` without `pipefail`).
+
 - [x] Count alerts, not delivery rows (April has one row per channel and retry; 470 rows
   are 237 alerts, 1 failed). Done on branch `feat/alert-unit`; brief `docs/briefs/alert-unit.md`.
   Measured: 3385 alerts, 3618 deliveries, 1 failed alert.
@@ -64,3 +71,12 @@ layer is *resolution* — turning candidates into validated places + coordinates
   build stays reproducible/offline. Persist a `{query -> result}` cache.
 - Optional: a local statistical NER pass (spaCy `ro_core_news_lg`) for the
   long tail of bare placemarks with no cue word.
+
+## Verified limits
+
+- [-] Find the cause of the August 2026 Grand Total mismatch (557 rows, summary 556).
+  Accepted by the owner on 2026-10-27 as a known source defect; the manifest keeps the
+  warning.
+- [-] Run the ingest on GitHub-hosted runners. The connection to data.gov.ro timed out in
+  2 of 2 runs (run 40526336961 and its re-run, 2026-10-27). The runners are in Azure; the
+  site likely blocks or drops that traffic. Use the VPS instead.
