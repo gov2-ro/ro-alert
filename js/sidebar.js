@@ -15,9 +15,9 @@ function buildDateRange() {
   const min = DATA.meta.date_min ? DATA.meta.date_min.slice(0, 10) : "";
   const max = DATA.meta.date_max ? DATA.meta.date_max.slice(0, 10) : "";
   wrap.innerHTML = `
-    <input type="date" id="date-from" min="${min}" max="${max}" value="${min}">
-    <span>–</span>
-    <input type="date" id="date-to" min="${min}" max="${max}" value="${max}">`;
+    <input type="date" id="date-from" min="${min}" max="${max}" value="${min}" data-i18n-label="date_from_label" aria-label="${esc(t("date_from_label"))}">
+    <span aria-hidden="true">–</span>
+    <input type="date" id="date-to" min="${min}" max="${max}" value="${max}" data-i18n-label="date_to_label" aria-label="${esc(t("date_to_label"))}">`;
   document.getElementById("date-from").addEventListener("change", (e) => setDateBound("dateFrom", e.target.value));
   document.getElementById("date-to").addEventListener("change", (e) => setDateBound("dateTo", e.target.value));
 }
@@ -57,9 +57,14 @@ function buildFacets() {
       </label>`;
     }).join("");
     facet.innerHTML = `
-      <button class="facet-head"><span data-i18n="${def.label}">${t(def.label)}</span><span class="chev">▾</span></button>
-      <div class="facet-body">${body}</div>`;
-    facet.querySelector(".facet-head").addEventListener("click", () => facet.classList.toggle("collapsed"));
+      <button type="button" class="facet-head" aria-expanded="${def.open ? "true" : "false"}" aria-controls="facet-body-${def.field}"><span data-i18n="${def.label}">${t(def.label)}</span><span class="chev" aria-hidden="true">▾</span></button>
+      <div class="facet-body" id="facet-body-${def.field}" role="group" aria-labelledby="facet-head-${def.field}">${body}</div>`;
+    const head = facet.querySelector(".facet-head");
+    head.id = "facet-head-" + def.field;
+    head.addEventListener("click", () => {
+      facet.classList.toggle("collapsed");
+      head.setAttribute("aria-expanded", String(!facet.classList.contains("collapsed")));
+    });
     facet.querySelectorAll("input[type=checkbox]").forEach((cb) => {
       cb.addEventListener("change", () => {
         const set = state.filters[cb.dataset.field];
@@ -89,7 +94,10 @@ function syncSidebar() {
   const max = DATA.meta.date_max ? DATA.meta.date_max.slice(0, 10) : "";
   if (df) df.value = state.dateFrom || min;
   if (dt) dt.value = state.dateTo || max;
-  document.querySelectorAll(".stab").forEach((b) => b.classList.toggle("active", b.dataset.mode === sidebarMode));
+  document.querySelectorAll(".stab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.mode === sidebarMode);
+    b.setAttribute("aria-pressed", String(b.dataset.mode === sidebarMode));
+  });
   updateSidebarVisibility();
 }
 
@@ -97,7 +105,7 @@ function wireSidebarTabs() {
   document.querySelectorAll(".stab").forEach((btn) => {
     btn.addEventListener("click", () => {
       sidebarMode = btn.dataset.mode;
-      document.querySelectorAll(".stab").forEach((b) => b.classList.toggle("active", b === btn));
+      document.querySelectorAll(".stab").forEach((b) => { b.classList.toggle("active", b === btn); b.setAttribute("aria-pressed", String(b === btn)); });
       updateSidebarVisibility();
     });
   });

@@ -26,6 +26,7 @@ function initMap(geo) {
   RoMap.map = L.map("map", {
     zoomControl: true, attributionControl: false,
     minZoom: 6, maxZoom: 9,
+    zoomAnimation: !REDUCED_MQ.matches, fadeAnimation: !REDUCED_MQ.matches, markerZoomAnimation: !REDUCED_MQ.matches,
   });
   RoMap.layer = L.geoJSON(geo, {
     style: featureStyle,
@@ -42,6 +43,15 @@ function initMap(geo) {
     },
   }).addTo(RoMap.map);
   RoMap.map.fitBounds(RoMap.layer.getBounds(), { padding: [10, 10] });
+  RoMap.map.on("layeradd moveend zoomend", skipShapesInTabOrder);
+  skipShapesInTabOrder();
+}
+
+/* County shapes and place points are pointer targets. Keyboard users use the list under the map,
+   so the shapes stay out of the Tab order (the map container and zoom buttons stay in it). */
+function skipShapesInTabOrder() {
+  if (!RoMap.map) return;
+  RoMap.map.getContainer().querySelectorAll("path, svg").forEach((el) => { el.setAttribute("tabindex", "-1"); el.setAttribute("focusable", "false"); });
 }
 
 function featureStyle(feature) {
@@ -118,6 +128,7 @@ function renderPlaces(rows) {
   }
   group.addTo(RoMap.map);
   RoMap.placeLayer = group;
+  skipShapesInTabOrder();
 }
 
 function renderMapLegend(max) {

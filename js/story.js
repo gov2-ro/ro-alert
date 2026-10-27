@@ -139,8 +139,8 @@ function renderStory(rows, container) {
       </section>
       <section class="panel">
         <h2>${t("story_places_title")}</h2>
-        <table class="story-table"><thead><tr><th>${t("story_col_place")}</th><th>${t("story_col_county")}</th><th class="num">${t("story_col_alerts")}</th><th>${t("story_col_risk")}</th></tr></thead>
-          <tbody>${placeRows || `<tr><td colspan="4">—</td></tr>`}</tbody></table>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="${esc(t("story_places_title"))}"><table class="story-table"><thead><tr><th scope="col">${t("story_col_place")}</th><th scope="col">${t("story_col_county")}</th><th scope="col" class="num">${t("story_col_alerts")}</th><th scope="col">${t("story_col_risk")}</th></tr></thead>
+          <tbody>${placeRows || `<tr><td colspan="4">—</td></tr>`}</tbody></table></div>
         ${storyCap("story_places_cap")}
       </section>
     </div>
@@ -172,7 +172,7 @@ function renderStoryCharts(S, rows) {
   const common = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false } },
-    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { beginAtZero: true, grid: { color: "#e8e3d8" } } },
+    scales: { x: { grid: { display: false }, ticks: { font: { size: 12 } } }, y: { beginAtZero: true, grid: { color: "#e8e3d8" } } },
   };
   upsert("story-monthly", "chart-story-monthly", {
     type: "bar",
@@ -192,7 +192,7 @@ function renderStoryCharts(S, rows) {
       { label: t("story_storm_label"), data: stormD, borderRadius: 3, borderColor: stormC, borderWidth: S.months.map((m, i) => isOff(i) ? 1 : 0),
         backgroundColor: S.months.map((m, i) => isOff(i) ? hatch(stormC) : stormC) },
     ] },
-    options: { ...common, plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 11 } } } } },
+    options: { ...common, plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 12 } } } } },
   });
   const hours = new Array(24).fill(0);
   for (const a of rows) if (a.hour != null) hours[a.hour]++;
@@ -200,7 +200,7 @@ function renderStoryCharts(S, rows) {
     type: "bar",
     data: { labels: hours.map((_, i) => i + ":00"),
             datasets: [{ data: hours, borderRadius: 3, backgroundColor: hours.map((_, i) => i >= 20 ? blue : "#7ab0e0") }] },
-    options: { ...common, scales: { ...common.scales, x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 10 } } } } },
+    options: { ...common, scales: { ...common.scales, x: { grid: { display: false }, ticks: { maxTicksLimit: 12, font: { size: 12 } } } } },
   });
 }
 

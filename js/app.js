@@ -34,7 +34,7 @@ function locChips(locs, opts = {}) {
   }
   return arr.map((l) => {
     const m = LOC_TYPE_META[l.type] || { icon: "•", label: "" };
-    return `<span class="loc-chip loc-${esc(l.type)}" title="${esc(t(m.label))}"><span class="loc-ic">${m.icon}</span>${esc(l.name)}</span>`;
+    return `<span class="loc-chip loc-${esc(l.type)}" title="${esc(t(m.label))}"><span class="loc-ic" aria-hidden="true">${m.icon}</span>${esc(l.name)}</span>`;
   }).join("") + overflow;
 }
 
@@ -55,6 +55,7 @@ async function init() {
   RoMap.onCountyClick = onCountyClick;
   RoMap.onPlaceClick = selectPlace;
   wireChrome();
+  wireAccess();
   renderDateLabel();
   loadFromHash(currentHash(), true);
 }
@@ -80,10 +81,12 @@ function renderFooterRange() {
    it, renders the view and writes the URL. `mode` is "push" (a deliberate step: a new history
    entry), "replace" (typing, language, sort: no new entry) or "none" (history events). */
 function update(mode, opts = {}) {
+  const focus = captureFocus();
   normalizeState(state, getCtx());
   syncControls();
   if (opts.render !== false) render();
   syncDrawer();
+  restoreFocus(focus, opts.focusFallback);
   if (mode !== "none") writeUrl(mode, opts.historyState);
 }
 
@@ -134,7 +137,7 @@ function wireChrome() {
     const b = e.target.closest(".view-tab"); if (!b || b.disabled) return;
     state.view = b.dataset.view;
     state.page = 1;
-    update("push");
+    update("push", { focusFallback: `.view-tab[data-view="${state.view}"]` });
   });
 
   let searchTimer;
@@ -147,9 +150,10 @@ function wireChrome() {
   document.getElementById("btn-clear-all").addEventListener("click", clearAll);
   document.getElementById("sidebar-clear").addEventListener("click", clearAll);
 
+  const dlg = document.getElementById("drawer");
   document.getElementById("drawer-close").addEventListener("click", closeDrawer);
-  document.getElementById("drawer-overlay").addEventListener("click", closeDrawer);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) closeDrawer(); });     // the backdrop
+  dlg.addEventListener("cancel", (e) => { e.preventDefault(); closeDrawer(); });       // Escape
 
   // The strip and the notices sit outside the view content, so they survive every render.
   document.getElementById("active-strip").addEventListener("click", (e) => {
@@ -159,7 +163,7 @@ function wireChrome() {
     if (!item) return;
     removeFilterItem(state, item);
     state.page = 1;
-    update("push");
+    update("push", { focusFallback: "#active-strip .strip-x, #open-filters, #search" });
   });
   document.getElementById("notices").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-notice]"); if (!btn) return;
@@ -183,12 +187,17 @@ function clearAll() {
 
 /* ---- controls derive from state ---- */
 function syncControls() {
-  document.querySelectorAll(".lbtn").forEach((x) => x.classList.toggle("active", x.dataset.lang === state.lang));
+  document.querySelectorAll(".lbtn").forEach((x) => {
+    const on = x.dataset.lang === state.lang;
+    x.classList.toggle("active", on);
+    x.setAttribute("aria-pressed", String(on));
+  });
   applyI18n();
   renderFooterRange();
   const scoped = !!state.selectedCounty || state.selectedPlaceId != null;
   document.querySelectorAll(".view-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.view === state.view);
+    if (b.dataset.view === state.view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     if (b.dataset.view === "location") b.disabled = !scoped;
   });
   syncSidebar();
@@ -308,7 +317,10 @@ function render() {
   }
 
   renderSidebarStats(currentRows);
-  document.getElementById("result-count").textContent = `${currentRows.length} ${t("results")}`;
+  const countText = `${currentRows.length} ${t("results")}`;
+  const countEl = document.getElementById("result-count");
+  if (countEl.textContent !== countText) countEl.textContent = countText;   // no repeat announcement
+  syncFilterButtons(currentRows.length);
 }
 
 /* No records: keep the filters usable. The search box and the strip stay outside this area. */
@@ -316,6 +328,8 @@ function renderEmpty(main) {
   main.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>${t("no_results")}</p>` +
     `<button type="button" class="link-btn" id="empty-clear">${t("empty_clear")}</button></div>`;
   document.getElementById("empty-clear").addEventListener("click", clearAll);
+  // The Sources section stays reachable without records.
+  if (state.view === "story" && typeof sourcesHtml === "function") main.insertAdjacentHTML("beforeend", sourcesHtml());
 }
 
 /* ---- utility functions (shared across modules) ---- */
@@ -345,10 +359,18 @@ function cssEsc(s) { return s.replace(/["\\]/g, "\\$&"); }
    data filter. A record link may point at an alert outside the current selection; the drawer
    says so. */
 let drawerKey = null;
+let drawerTrigger = null;     // {el, id}: the control that opened the record
 
-function openDrawer(id) {
+/* `from` is the control or row that the user used; focus returns to its button when the
+   dialog closes, also after a rerender replaced it. */
+function openDrawer(id, from) {
   if (!DATA.alerts.some((x) => x.id === id)) return;
   const already = !!state.record;
+  if (!already) {
+    const host = from && from.closest ? (from.closest("[data-open-id]") || from.closest("[data-id]")) : null;
+    const btn = host && (host.hasAttribute("data-open-id") ? host : host.querySelector("[data-open-id]"));
+    drawerTrigger = { el: btn || document.activeElement, id };
+  }
   state.record = id;
   if (!already) pushedRecord = id;
   update(already ? "replace" : "push", { render: false, historyState: already ? null : { rec: id } });
@@ -369,17 +391,30 @@ function closeDrawer() {
 /* Show or hide the drawer from `state.record`. Rebuild it only when its content would change. */
 function syncDrawer() {
   const drawer = document.getElementById("drawer");
-  const overlay = document.getElementById("drawer-overlay");
   const a = state.record ? DATA.alerts.find((x) => x.id === state.record) : null;
   if (!a) {
-    drawer.classList.add("hidden"); overlay.classList.add("hidden");
     drawerKey = null;
+    if (drawer.open) {
+      drawer.close();
+      restoreAfterRecord();
+    }
     return;
   }
   const inSelection = currentRows.some((r) => r.id === a.id);
   const key = `${a.id}|${state.lang}|${inSelection}`;
   if (key !== drawerKey) { fillDrawer(a, inSelection); drawerKey = key; }
-  drawer.classList.remove("hidden"); overlay.classList.remove("hidden");
+  if (!drawer.open) drawer.showModal();
+}
+
+/* Focus returns to the control that opened the record. If a rerender replaced it, the button
+   of the same record comes next, then the main region. Focus never stays on the page body. */
+function restoreAfterRecord() {
+  const trig = drawerTrigger;
+  drawerTrigger = null;
+  let target = trig && trig.el && trig.el.isConnected && trig.el.offsetParent !== null ? trig.el : null;
+  if (!target && trig) target = document.querySelector(`[data-open-id="${cssEsc(trig.id)}"]`);
+  if (!target) target = document.getElementById("content-main");
+  if (target) target.focus();
 }
 
 function fillDrawer(a, inSelection) {
@@ -415,7 +450,7 @@ function fillDrawer(a, inSelection) {
   const places = a.places || [];
 
   document.getElementById("drawer-body").innerHTML = `
-    <div class="drawer-title">${esc(a.title || (a.risk_category ? catLabel(a.risk_category) : ""))}</div>
+    <h2 class="drawer-title" id="drawer-title">${esc(a.title || (a.risk_category ? catLabel(a.risk_category) : ""))}</h2>
     <div class="drawer-sub">${esc(a.judet || "")} · ${esc(a.initiator || "")} · ${fmtTime(a.sent_at)}</div>
     ${inSelection ? "" : `<p class="drawer-context" id="drawer-context">${t("drawer_outside")}</p>`}
     <div class="status-row">${statusBadge(a)} ${sevBadge(a.severitate)}</div>
@@ -424,8 +459,8 @@ function fillDrawer(a, inSelection) {
       <div class="drawer-col">
         <div class="msg-head"><h3>${t("detail_message")}</h3>
           <div class="msg-toggle">
-            <button class="mt-btn${view.shown === "ro" ? " active" : ""}" data-lang="ro"${hasRo ? "" : " disabled"}>RO</button>
-            <button class="mt-btn${view.shown === "en" ? " active" : ""}" data-lang="en"${hasEn ? "" : " disabled"}>EN</button>
+            <button type="button" class="mt-btn${view.shown === "ro" ? " active" : ""}" data-lang="ro" lang="ro" aria-pressed="${view.shown === "ro"}"${hasRo ? "" : " disabled"}>RO</button>
+            <button type="button" class="mt-btn${view.shown === "en" ? " active" : ""}" data-lang="en" lang="en" aria-pressed="${view.shown === "en"}"${hasEn ? "" : " disabled"}>EN</button>
           </div>
         </div>
         ${ml ? `<div class="msg-lang">${t("drawer_lang")}: ${esc(ml)}</div>` : ""}
@@ -438,7 +473,7 @@ function fillDrawer(a, inSelection) {
       </div>
       <div class="drawer-col">
         ${a.deliveries && a.deliveries.length ? `<h3>${t("detail_deliveries")} (${a.deliveries.length})</h3>
-        <table class="del-table"><thead><tr><th>${t("del_channel")}</th><th>${t("del_status")}</th><th>${t("del_time")}</th></tr></thead><tbody>${a.deliveries.map((d) => `<tr><td>${esc((d.channel || "—").replace(/^trimitere alerta pe canalul\s+/i, ""))}</td><td><span class="badge ${d.status === "ERROR" ? "error" : "sent"}">${esc(d.status || "—")}</span></td><td>${fmtTime(d.sent_at)}</td></tr>`).join("")}</tbody></table>` : ""}
+        <table class="del-table"><thead><tr><th scope="col">${t("del_channel")}</th><th scope="col">${t("del_status")}</th><th scope="col">${t("del_time")}</th></tr></thead><tbody>${a.deliveries.map((d) => `<tr><td>${esc((d.channel || "—").replace(/^trimitere alerta pe canalul\s+/i, ""))}</td><td><span class="badge ${d.status === "ERROR" ? "error" : "sent"}">${esc(d.status || "—")}</span></td><td>${fmtTime(d.sent_at)}</td></tr>`).join("")}</tbody></table>` : ""}
         <h3>${t("detail_meta")}</h3>
         <div class="meta-grid">${metaRows.map(([k, v]) => `<div class="mk">${t(k)}</div><div>${esc(v)}</div>`).join("")}</div>
       </div>
@@ -450,7 +485,10 @@ function fillDrawer(a, inSelection) {
   document.querySelectorAll(".msg-toggle .mt-btn").forEach((b) => {
     b.addEventListener("click", () => {
       if (b.disabled) return;
-      document.querySelectorAll(".msg-toggle .mt-btn").forEach((x) => x.classList.toggle("active", x === b));
+      document.querySelectorAll(".msg-toggle .mt-btn").forEach((x) => {
+        x.classList.toggle("active", x === b);
+        x.setAttribute("aria-pressed", String(x === b));
+      });
       const v = messageView(a, b.dataset.lang);
       msgEl.textContent = v.text;
       noteEl.textContent = note(v);

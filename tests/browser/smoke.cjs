@@ -149,6 +149,7 @@ async function view(page, name) {
   }
 
   await require("./state.cjs")({ browser, check, URL, SHOTS });
+  await require("./access.cjs")({ browser, check, URL, SHOTS, report: (m) => console.log("INFO  " + m) });
 
   await browser.close();
   console.log(failures ? `\n${failures} check(s) failed` : "\nAll browser checks passed");

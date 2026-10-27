@@ -188,7 +188,7 @@ module.exports = async function run({ browser, check, URL, SHOTS }) {
       // copy / paste into a fresh page
       const copy = await openAt(url.split("#")[1], { lang: "ro" });
       const snap2 = await copy.page.evaluate(() => ({ n: currentRows.length, view: state.view, rec: state.record, lang: state.lang,
-        drawer: !document.getElementById("drawer").classList.contains("hidden") }));
+        drawer: document.getElementById("drawer").open }));
       check(`${tag} S07 copy/paste restores the same state and the open record`, snap2.n === snap.n && snap2.view === snap.view && snap2.rec === snap.rec && snap2.lang === snap.lang && snap2.drawer, JSON.stringify([snap, snap2]));
       await copy.ctx.close();
       // reload
@@ -215,7 +215,7 @@ module.exports = async function run({ browser, check, URL, SHOTS }) {
       await page.waitForFunction(() => !!state.record);
       await page.goBack();
       await page.waitForFunction(() => !state.record);
-      check(`${tag} S07 Back closes the drawer and keeps the filters`, !(await page.evaluate(() => !document.getElementById("drawer").classList.contains("hidden"))) && (await page.evaluate(() => state.filters.risk_category.has("Incendiu"))));
+      check(`${tag} S07 Back closes the drawer and keeps the filters`, !(await page.evaluate(() => document.getElementById("drawer").open)) && (await page.evaluate(() => state.filters.risk_category.has("Incendiu"))));
       // Reset updates the URL
       await page.click("#btn-clear-all");
       await page.waitForFunction(() => state.filters.risk_category.size === 0 && !state.dateFrom && !state.search);
