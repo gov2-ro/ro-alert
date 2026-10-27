@@ -8,3 +8,7 @@ repository/ui-screenshots/*
 .venv/
 __pycache__/
 node_modules/
+ingest-result.json
+ingest.log
+sources/.ingest-txn/
+sources/.stage-*/

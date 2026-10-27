@@ -4,7 +4,7 @@
 
 - [x] Prepare specs and implementation guidelines. Entry point: `docs/IMPLEMENTATION_HANDOFF.md`.
 - [x] Phase 01: analytics correctness. Done on branch `feat/audit-01-analytics`. Brief: `docs/briefs/audit-01-analytics.md` (A01–A10).
-- [ ] Phase 02: pipeline reliability. Brief: `docs/briefs/audit-02-pipeline.md` (P01–P11).
+- [x] Phase 02: pipeline reliability. Done on branch `feat/audit-02-pipeline`. Brief: `docs/briefs/audit-02-pipeline.md` (P01–P11).
 - [ ] Phase 03: shared state, places, and language. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
 - [ ] Phase 04: mobile and accessibility. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
 - [ ] Phase 05: visual and geographic architecture. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
@@ -37,7 +37,7 @@ The audit changed no application code or data. Items below need implementation a
 - [x] **P1 — Coverage of failures:** the overview divides one failed alert by all 3,385
   alerts. Only April reports failed deliveries. Scope the rate to reporting months and
   show its denominator. Keep source SENT status separate from proof of device receipt.
-- [ ] **P2 — Workflow no-change path:** the month extraction pipeline exits 1 when ingest
+- [x] **P2 — Workflow no-change path:** the month extraction pipeline exits 1 when ingest
   prints `no new data`. Reproduced under Bash with `-e -o pipefail`. Handle an empty match
   explicitly without hiding ingest failures. This is separate from the deferred VPS work.
 - [ ] **P2 — Filter state:** feed chips show All after selecting Meteo, although 583 rows
@@ -53,10 +53,10 @@ The audit changed no application code or data. Items below need implementation a
 - [ ] **P2 — Browse and share:** table truncates at 500 of 3,385 rows with no pagination.
   Feed creates 3,385 cards and 48,923 DOM elements. Add pagination and filtered export.
   Store view, filters, county, locality, and record id in the URL. Support browser Back.
-- [ ] **P2 — Pipeline validation:** add offline CI for workbook fixtures, delivery conservation,
+- [x] **P2 — Pipeline validation:** add offline CI for workbook fixtures, delivery conservation,
   unique ids, valid dates, supported statuses, and compact/restore parity. Fail on conflicting
   duplicate ids. Stage CSV and manifest changes before replacing the current snapshot.
-- [ ] **P2 — Source revisions:** change detection uses only resource id and last_modified;
+- [x] **P2 — Source revisions:** change detection uses only resource id and last_modified;
   SHA-256 is recorded after download. Add periodic content checks and checked_at/fetched_at.
   Define selection when multiple resources describe one month. Remove stale CSV data when
   a month changes from detail to summary. Keep this separate from starting a VPS schedule.

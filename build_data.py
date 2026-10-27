@@ -7,6 +7,8 @@ Reads every `sources/YYYY-MM.csv` (written by `ingest.py`) in month order and wr
   - data/meta.json   : facet value lists + counts, per-judet counts, totals, date range
 
 Run from the project root:  python3 build_data.py
+The build is offline. It reads only tracked files: sources/, gazetteer/ and geometry/.
+It stops with an error when a check fails (see `validate_rows`, `check_sources`).
 """
 import csv
 import glob
@@ -21,6 +23,11 @@ from datetime import datetime
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.join(ROOT, "sources")
 OUT_DIR = os.path.join(ROOT, "data")
+GEOMETRY = os.path.join(ROOT, "geometry", "romania-counties.geojson")  # tracked build input
+SCHEMA_VERSION = 1
+SUPPORTED_STATUSES = {"SENT", "ERROR", "UNKNOWN", ""}  # CANCEL is a message type, not a status
+TIME_COLUMNS = ("Data trimitere", "Data creare", "Data expirare")
+MONTH_KEY_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 
 # --- ISU / initiator code -> county (judet) ----------------------------------
 # County ISUs use the standard auto-plate abbreviations. National actors map to
@@ -536,6 +543,111 @@ def norm(v):
     return v if v else None
 
 
+# ----- source checks -----
+def validate_rows(rows, label):
+    """Check timestamps and delivery statuses. Return a list of problems with row context.
+    A row line is `_line` when set, else its position in the file (header = line 1)."""
+    problems = []
+    for i, r in enumerate(rows):
+        line = r.get("_line", i + 2)
+        label = r.get("Fisier sursa") or label
+        for col in TIME_COLUMNS:
+            v = (r.get(col) or "").strip()
+            if v and parse_dt(v) is None:
+                problems.append("%s line %s: invalid %s %r" % (label, line, col, v))
+        st = (r.get("Status trimitere") or "").strip().upper()
+        if st not in SUPPORTED_STATUSES:
+            problems.append("%s line %s: unsupported Status trimitere %r" % (label, line, st))
+    return problems
+
+
+class SourceError(Exception):
+    pass
+
+
+def load_manifest(path):
+    """Read the manifest. A missing or malformed manifest is fatal."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            manifest = json.load(f)
+    except OSError as e:
+        raise SourceError("sources/manifest.json cannot be read: %s" % e)
+    except ValueError as e:
+        raise SourceError("sources/manifest.json is not valid JSON: %s" % e)
+    if not isinstance(manifest, list):
+        raise SourceError("sources/manifest.json must be a list")
+    months = set()
+    for i, m in enumerate(manifest):
+        if not isinstance(m, dict) or not MONTH_KEY_RE.match(str(m.get("month", ""))):
+            raise SourceError("sources/manifest.json entry %d has no valid month" % i)
+        if m.get("shape") not in ("D", "R", "S"):
+            raise SourceError("sources/manifest.json entry %s has an unknown shape %r" % (m["month"], m.get("shape")))
+        if m["month"] in months:
+            raise SourceError("sources/manifest.json has two entries for month %s" % m["month"])
+        months.add(m["month"])
+        if not isinstance(m.get("warnings", []), list) or not isinstance(m.get("rows", 0), int):
+            raise SourceError("sources/manifest.json entry %s has bad warnings or rows" % m["month"])
+    return manifest
+
+
+def check_sources(csv_counts, manifest):
+    """csv_counts: {month key: row count}. Compare the CSV files with the manifest."""
+    by_month = {m["month"]: m for m in manifest}
+    for key in csv_counts:
+        if not MONTH_KEY_RE.match(key):
+            raise SourceError("sources/%s.csv is not a month key YYYY-MM" % key)
+        m = by_month.get(key)
+        if m is None:
+            raise SourceError("sources/%s.csv has no manifest entry" % key)
+        if m["shape"] == "S":
+            raise SourceError("month %s is summary-only in the manifest but sources/%s.csv holds "
+                              "detail records; remove the stale CSV" % (key, key))
+        if m.get("rows") != csv_counts[key]:
+            raise SourceError("sources/%s.csv has %d rows, the manifest says %s"
+                              % (key, csv_counts[key], m.get("rows")))
+    for m in manifest:
+        if m["shape"] != "S" and m["month"] not in csv_counts:
+            raise SourceError("manifest month %s (shape %s) has no sources/%s.csv"
+                              % (m["month"], m["shape"], m["month"]))
+        if m["shape"] == "R" and m.get("grand_total") is not None and m["grand_total"] != m.get("rows"):
+            expected = "Grand Total %d differs from row count %d" % (m["grand_total"], m["rows"])
+            if expected not in (m.get("warnings") or []):
+                raise SourceError("month %s: Grand Total %s differs from %s rows and the manifest has "
+                                  "no warning for it" % (m["month"], m["grand_total"], m["rows"]))
+
+
+def file_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        h.update(f.read())
+    return h.hexdigest()
+
+
+def input_hashes(files):
+    """Content hashes of every build input, with stable relative paths and sorted keys."""
+    def rel(p):
+        return os.path.relpath(p, ROOT).replace(os.sep, "/")
+    gaz = sorted(glob.glob(os.path.join(ROOT, "gazetteer", "*.csv")))
+    out = {
+        "builder": {"build_data.py": file_sha256(os.path.abspath(__file__))},
+        "gazetteer": {rel(p): file_sha256(p) for p in gaz},
+        "geometry": {rel(GEOMETRY): file_sha256(GEOMETRY)},
+        "manifest": {"sources/manifest.json": file_sha256(os.path.join(SRC_DIR, "manifest.json"))},
+        "sources": {"sources/" + os.path.basename(p): file_sha256(p) for p in sorted(files)},
+    }
+    return {k: dict(sorted(v.items())) for k, v in sorted(out.items())}
+
+
+def row_signature(grp):
+    return tuple(tuple(sorted((k, v) for k, v in g.items() if k not in ("Fisier sursa", "_line")))
+                 for g in grp)
+
+
+def row_ref(grp):
+    g = grp[0]
+    return "%s:%s" % (g.get("Fisier sursa"), g.get("_line"))
+
+
 # ----- compact output (alerts, geometry) -----
 # The front end restores everything dropped here: see `restoreAlerts` in js/data.js.
 OMIT_KINDS = (None, "", [])
@@ -677,17 +789,34 @@ def simplify_geo(geo, eps=GEO_TOLERANCE):
     return {**geo, "features": feats}
 
 
-def main():
+def build():
+    """Read the tracked inputs, check them and return the enriched data (no file output)."""
+    from_ingest = os.path.join(SRC_DIR, ".ingest-txn")
+    if os.path.exists(from_ingest):
+        raise SourceError("unfinished ingest transaction in %s; run `python3 ingest.py` to "
+                          "recover the earlier snapshot, or restore sources/ from version control" % from_ingest)
     files = sorted(glob.glob(os.path.join(SRC_DIR, "*.csv")))
     if not files:
-        raise SystemExit("no sources/*.csv found; run ingest.py first")
-    rows = []
+        raise SourceError("no sources/*.csv found; run ingest.py first")
+    manifest = load_manifest(os.path.join(SRC_DIR, "manifest.json"))
+    rows, csv_counts, problems = [], {}, []
     for fp in files:
         base = os.path.basename(fp)
+        n = 0
         with open(fp, encoding="utf-8", newline="") as f:
-            for r in csv.DictReader(f):
+            rd = csv.DictReader(f)
+            for r in rd:
                 r["Fisier sursa"] = base
+                r["_line"] = rd.line_num
                 rows.append(r)
+                n += 1
+        csv_counts[base[:-4]] = n
+    check_sources(csv_counts, manifest)
+    problems = validate_rows(rows, "sources")
+    if problems:
+        raise SourceError("%d invalid row(s):\n  " % len(problems) + "\n  ".join(problems[:20]))
+    if not os.path.exists(GEOMETRY):
+        raise SourceError("%s is missing; it is a tracked build input" % os.path.relpath(GEOMETRY, ROOT))
 
     gaz = load_gazetteer()
     place_counts = collections.Counter()          # all alerts
@@ -695,8 +824,9 @@ def main():
     unresolved = collections.Counter()            # (status, name, judet) -> mentions
     risk_rules = []                               # (id, category, rule, principal, asociat)
     alerts = []
-    seen_ids = set()
-    duplicates = 0
+    seen_ids = {}                                 # id -> (row signature, source reference)
+    duplicates = []                               # identical duplicate groups, reported
+    dup_rows = 0
     for grp, gkey in group_rows(rows):
         deliveries = []
         for g in grp:
@@ -720,8 +850,8 @@ def main():
         tip_mesaj = (r.get("Tip mesaj") or "").strip().upper()
         if any(d["status"] == "SENT" for d in deliveries):
             status_ok = True
-        elif any(d["status"] for d in deliveries):
-            status_ok = False
+        elif any(d["status"] == "ERROR" for d in deliveries):
+            status_ok = False  # an UNKNOWN status is unknown, not a failure
         else:
             status_ok = None
 
@@ -737,9 +867,14 @@ def main():
         else:
             aid = alert_id(r, title, msg)
         if aid in seen_ids:
-            duplicates += 1
+            sig, ref = seen_ids[aid]
+            if sig != row_signature(grp):
+                raise SourceError("conflicting duplicate alert id %s: %s and %s hold different rows"
+                                  % (aid, ref, row_ref(grp)))
+            duplicates.append("id %s: %s repeats %s" % (aid, row_ref(grp), ref))
+            dup_rows += len(grp)
             continue
-        seen_ids.add(aid)
+        seen_ids[aid] = (row_signature(grp), row_ref(grp))
 
         names, n_generic = parse_poligoane(poligoane)
         places, seen_sir = [], set()
@@ -825,15 +960,8 @@ def main():
             for loc in a["localities"]:
                 loc_by_judet[a["judet"]][loc] += 1
 
-    # per-month figures; `reports_errors` comes from the ingest manifest
-    reports = {}
-    manifest = []
-    try:
-        with open(os.path.join(SRC_DIR, "manifest.json"), encoding="utf-8") as mf:
-            manifest = json.load(mf)
-        reports = {m["month"]: bool(m.get("reports_errors")) for m in manifest}
-    except (OSError, ValueError, KeyError):
-        pass
+    # per-month figures; `reports_errors` comes from the ingest manifest (validated above)
+    reports = {m["month"]: bool(m.get("reports_errors")) for m in manifest}
     months = []
     for fp in files:
         key = os.path.basename(fp).replace(".csv", "")
@@ -854,7 +982,7 @@ def main():
 
     # Summary-only months (manifest shape S): official total and risk breakdown, no alerts.
     for m in manifest:
-        if m.get("shape") != "S" or not m.get("grand_total"):
+        if m.get("shape") != "S" or m.get("grand_total") is None:
             continue
         by_risk = collections.Counter()
         for row in m.get("summary") or []:
@@ -870,14 +998,21 @@ def main():
 
     # One line per source file, for the Sources section of the "Pe scurt" view.
     sources = [{
-        "month": m["month"], "dataset": m["dataset"], "shape": m["shape"],
+        "month": m["month"], "dataset": m.get("dataset"), "shape": m["shape"],
         "rows": m.get("rows"), "grand_total": m.get("grand_total"),
         "warnings": m.get("warnings") or [], "last_modified": m.get("last_modified"),
+        "fetched_at": m.get("fetched_at"),  # null = unknown (legacy entries)
     } for m in sorted(manifest, key=lambda x: x["month"])]
     last_modified = max((m["last_modified"] for m in manifest if m.get("last_modified")), default=None)
 
+    n_deliveries = sum(len(a["deliveries"]) for a in alerts)
+    if n_deliveries + dup_rows != len(rows):
+        raise SourceError("delivery conservation failed: %d source rows, %d deliveries, %d rows in "
+                          "identical duplicates" % (len(rows), n_deliveries, dup_rows))
     dates = [a["sent_at"] for a in alerts if a["sent_at"]]
     meta = {
+        "schema_version": SCHEMA_VERSION,
+        "inputs": input_hashes(files),
         "total": len(alerts),
         "deliveries": sum(len(a["deliveries"]) for a in alerts),
         "delivery_error": sum(1 for a in alerts for d in a["deliveries"] if d["status"] == "ERROR"),
@@ -919,7 +1054,19 @@ def main():
 
     slim, omitted, kept_msg = compact_alerts(alerts)
     meta["omitted"] = omitted
+    return {"alerts": alerts, "slim": slim, "meta": meta, "kept_msg": kept_msg,
+            "unresolved": unresolved, "risk_rules": risk_rules, "duplicates": duplicates,
+            "judet_counts": judet_counts}
 
+
+def main():
+    try:
+        b = build()
+    except SourceError as e:
+        raise SystemExit("build_data.py: " + str(e))
+    alerts, slim, meta, kept_msg = b["alerts"], b["slim"], b["meta"], b["kept_msg"]
+    unresolved, risk_rules, duplicates, judet_counts = (
+        b["unresolved"], b["risk_rules"], b["duplicates"], b["judet_counts"])
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(os.path.join(OUT_DIR, "unresolved_places.csv"), "w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
@@ -948,15 +1095,13 @@ def main():
     write_js("alerts.js", "ALERTS", slim)
     write_js("meta.js", "META", meta)
 
-    geo_path = os.path.join(OUT_DIR, "romania-counties.geojson")
-    if os.path.exists(geo_path):
-        with open(geo_path, encoding="utf-8") as gf:
-            geo = json.load(gf)
-        write_js("geo.js", "GEO", simplify_geo(geo))
-    else:
-        print("  WARNING: data/romania-counties.geojson missing -> data/geo.js not written")
+    with open(GEOMETRY, encoding="utf-8") as gf:
+        geo = json.load(gf)
+    write_js("geo.js", "GEO", simplify_geo(geo))
 
-    print(f"  duplicates removed: {duplicates}; msg kept for {kept_msg} alerts")
+    print(f"  duplicates removed: {len(duplicates)}; msg kept for {kept_msg} alerts")
+    for d in duplicates:
+        print("  WARNING identical duplicate dropped, " + d)
     print(f"Wrote {len(alerts)} alerts -> data/alerts.json + data/*.js")
     print(f"  deliveries={meta['deliveries']} delivery_error={meta['delivery_error']}")
     print(f"  sent={meta['sent']} error={meta['error']} cancel={meta['cancel']}")

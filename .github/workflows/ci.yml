@@ -1,0 +1,37 @@
+name: ci
+
+# Offline checks. Nothing here calls data.gov.ro.
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: "20"
+
+      - run: pip install -r requirements.txt
+
+      - name: Python tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+
+      - name: JavaScript tests
+        run: node --test tests/js/*.test.cjs
+
+      - name: Rebuild from tracked files and compare with the committed bundles
+        run: |
+          python3 build_data.py
+          git diff --exit-code -- data/alerts.js data/meta.js data/geo.js

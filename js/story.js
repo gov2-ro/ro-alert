@@ -205,8 +205,11 @@ function sourcesHtml() {
     const rows = s.shape === "S"
       ? `${t("sources_total")} ${s.grand_total}`
       : `${s.rows} ${t("sources_rows")}` + (s.grand_total != null && s.shape === "R" ? `, ${t("sources_total")} ${s.grand_total}` : "");
+    const fetched = s.fetched_at ? s.fetched_at.slice(0, 10) : t("sources_unknown");
     const warn = (s.warnings || []).map((w) => ` <span class="badge cancel">${t("sources_warning")}: ${esc(w)}</span>`).join("");
     return `<li><b>${esc(s.month)}</b> · ${esc(shape)} · ${rows} · ` +
+      `${t("sources_modified")} ${esc(s.last_modified ? s.last_modified.slice(0, 10) : t("sources_unknown"))} · ` +
+      `${t("sources_fetched")} ${esc(fetched)} · ` +
       `<a href="https://data.gov.ro/dataset/${encodeURIComponent(s.dataset)}" target="_blank" rel="noopener">${esc(s.dataset)}</a>${warn}</li>`;
   }).join("");
   const have = new Set((m.months || []).map((x) => x.key));
