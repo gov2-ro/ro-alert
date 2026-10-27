@@ -121,19 +121,10 @@ function updateSidebarVisibility() {
   });
 }
 
+/* The sidebar shows controls, the active selection (the strip) and one result count.
+   Failure and status figures live in the view, once. */
 function renderSidebarStats(rows) {
   const host = document.getElementById("sidebar-stats");
   if (!host) return;
-  const sent = rows.filter((a) => a.status_ok === true).length;
-  const c = failureCoverage(rows);
-  const sample = c.alerts
-    ? `<div class="sidebar-stat" title="${esc(failureSub(c.alerts, c.months))}"><div class="sv">${c.alerts.text}</div><div class="sk">${t("fail_sample_alerts")}</div></div>
-       <div class="sidebar-stat" title="${esc(failureSub(c.deliveries, c.months))}"><div class="sv">${c.deliveries.text}</div><div class="sk">${t("fail_sample_deliv")}</div></div>`
-    : `<div class="sidebar-stat" title="${esc(t("fail_unknown_sub"))}"><div class="sv">—</div><div class="sk">${t("fail_unknown")}</div></div>`;
-  host.innerHTML = `
-    <div class="sidebar-stat"><div class="sv">${rows.length}</div><div class="sk">${t("kpi_total")}</div></div>
-    <div class="sidebar-stat ok"><div class="sv">${sent}</div><div class="sk">${t("kpi_sent")}</div></div>
-    <div class="sidebar-stat err"><div class="sv">${c.observed}</div><div class="sk">${t("kpi_error")}</div></div>
-    ${sample}
-  `;
+  host.textContent = `${fmtN(rows.length)} ${t("results")}`;
 }

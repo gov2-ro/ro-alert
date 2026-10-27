@@ -7,7 +7,7 @@
 - [x] Phase 02: pipeline reliability. Done on branch `feat/audit-02-pipeline`. Brief: `docs/briefs/audit-02-pipeline.md` (P01–P11).
 - [x] Phase 03: shared state, places, and language. Done on branch `feat/audit-03-state`. Brief: `docs/briefs/audit-03-state.md` (S01–S11).
 - [x] Phase 04: mobile and accessibility. Done on branch `feat/audit-04-access`. Brief: `docs/briefs/audit-04-access.md` (U01–U10).
-- [ ] Phase 05: visual and geographic architecture. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
+- [x] Phase 05: visual and geographic architecture. Done on branch `feat/audit-05-visual`. Brief: `docs/briefs/audit-05-visual.md` (V01–V10).
 - [ ] Phase 06: browsing, export, and rendering. Brief: `docs/briefs/audit-06-browsing.md` (B01–B11).
 
 - [ ] Phase 01 follow-up: `js/story.js` keeps its own `BEAR_RE` copy (the "Pe scurt" bear share
@@ -61,12 +61,13 @@ The audit changed no application code or data. Items below need implementation a
   SHA-256 is recorded after download. Add periodic content checks and checked_at/fetched_at.
   Define selection when multiple resources describe one month. Remove stale CSV data when
   a month changes from detail to summary. Keep this separate from starting a VPS schedule.
-- [ ] **P2 — Geographic coverage:** 488 alerts are excluded from county fills as national.
+- [x] **P2 — Geographic coverage:** 488 alerts are excluded from county fills as national.
   These include 369 classified weather alerts. Show this count. Distinguish issuer county
   from affected area. Document the combined București-Ilfov mapping onto București.
-- [ ] **P3 — Visual hierarchy:** separate county fills from locality points; 1,373 points
+  Done in Phase 05: the map coverage shows 2,897 / 3,385 county, 488 national, and the Ilfov convention.
+- [x] **P3 — Visual hierarchy:** separate county fills from locality points; 1,373 points
   obscure the county map. Reduce repeated status KPIs. Move delivery diagnostics into a
-  coverage-labelled panel. Use neutral colours for changes in warning volume.
+  coverage-labelled panel. Use neutral colours for changes in warning volume. Done in Phase 05.
 - [ ] **P3 — Small architecture changes:** consolidate the two facet definitions and category
   colours. Render once on language changes. Preserve map and chart instances on filtering.
   Add a data schema version, build input hashes, and a visible load-error state.
@@ -103,7 +104,7 @@ The audit changed no application code or data. Items below need implementation a
 - [x] Localities from `Lista poligoane`, with a map layer. Brief: `docs/briefs/localities.md`.
   Done on branch `feat/localities`: 94.9% of all mentions and 98.4% of bear mentions resolved.
 - [ ] Localities: match old spellings (`ADINCATA` for Adâncata: î written as i). Measured: 4 of 54 no-match mentions are names missing from the gazetteer (50 are county names); `ADINCATA` is one.
-- [ ] Map: at national zoom, 1,373 points hide the county colours. Scale the radius with the
+- [x] Map (done in Phase 05: Counties / Localities mode, points only in Localities mode): at national zoom, 1,373 points hide the county colours. Scale the radius with the
   zoom, or add a toggle between counties and points.
 - [ ] Localities: 131 mentions are ambiguous (two places with the same name in one county). Decide whether to pick the larger place or the one nearest to the alert centroid.
 - [x] Timeline with official totals and a "Pe scurt" view. Brief: `docs/briefs/story-view.md`. Done on branch `feat/story-view`.
@@ -188,11 +189,22 @@ layer is *resolution* — turning candidates into validated places + coordinates
 
 - [ ] Phase 06: the Feed still renders every card; on a phone the page is long. Pagination (B-checks)
   also shortens the mobile scroll. The Table keeps its 500-row cap.
-- [ ] Phase 05: the Leaflet map has no keyboard focus on county shapes; the list under the map is the
-  keyboard route. A map redesign may add focusable shapes.
+- [-] Phase 05 reviewed the Leaflet map keyboard access: the shapes stay out of the Tab order and the list
+  under the map stays the keyboard route in both modes. Reason: 41 shapes and 1,373 points would add
+  more than 1,400 Tab stops; the list gives the same actions.
 - [ ] Message text mixes Romanian and English; the drawer sets `lang` on its RO/EN buttons only, not on
   each message block. Add `lang` per block when the build marks the split reliably.
 - [ ] Chart.js canvas labels and legends are not read by screen readers; each chart has a data table instead.
+
+## Phase 05 follow-up
+
+- [ ] The map list under the map holds counties and places for both modes. Show the list of the active
+  mode first when a later phase has a reason to.
+- [ ] Chart date labels stay ISO (`2026-03-17`), rotated. A shorter label needs one date format for the
+  tables, tooltips and axes together.
+- [ ] Phase 06: the Local view renders every record card (418 for Harghita); a screenshot of it is 98,000 px tall.
+- [ ] Mention resolution (94.9%) is a whole-archive figure. A per-selection figure needs the unresolved
+  mentions in the alert records; the build does not store them.
 
 ## Verified limits
 

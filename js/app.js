@@ -171,6 +171,8 @@ function wireChrome() {
     renderNotices();
   });
 
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-goto-sources]")) gotoSources(); });
+
   window.addEventListener("popstate", onHistory);
   window.addEventListener("hashchange", onHistory);
 }
@@ -317,10 +319,27 @@ function render() {
   }
 
   renderSidebarStats(currentRows);
+  renderCoverage(currentRows.length);
   const countText = `${currentRows.length} ${t("results")}`;
   const countEl = document.getElementById("result-count");
   if (countEl.textContent !== countText) countEl.textContent = countText;   // no repeat announcement
   syncFilterButtons(currentRows.length);
+}
+
+/* The coverage bar sits outside the replaceable view, so source status and the method link
+   stay reachable in every view, also with a long Feed. */
+function renderCoverage(selected) {
+  const host = document.getElementById("coverage");
+  if (host) host.innerHTML = coverageHtml(selected);
+}
+
+/* Open the Sources and method section of "Pe scurt". The step is a history entry, so Back returns. */
+function gotoSources() {
+  state.view = "story";
+  state.page = 1;
+  update("push");
+  const el = document.getElementById("sources-section");
+  if (el) { el.scrollIntoView({ block: "start" }); el.focus({ preventScroll: true }); }
 }
 
 /* No records: keep the filters usable. The search box and the strip stay outside this area. */
