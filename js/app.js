@@ -57,6 +57,7 @@ async function init() {
   buildSidebar();
   // Map is initialized in renderDashboard (when #map div exists)
   RoMap.onCountyClick = onCountyClick;
+  RoMap.onPlaceClick = onPlaceClick;
   wireChrome();
   renderDateLabel();
   render();
@@ -147,6 +148,14 @@ function onCountyClick(name) {
   document.querySelectorAll(".view-tab").forEach((t) => t.classList.toggle("active", t.dataset.view === "location"));
   const locTab = document.getElementById("view-tabs").querySelector("[data-view='location']");
   if (locTab) locTab.disabled = false;
+  render();
+}
+
+/* ---- map point click -> Location view, filtered by that locality ----
+   Reuses state.selectedLocality; applyFilters matches it against places[].name too. */
+function onPlaceClick(judet, name) {
+  onCountyClick(judet);
+  state.selectedLocality = name;
   render();
 }
 

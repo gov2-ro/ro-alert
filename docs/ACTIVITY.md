@@ -1,5 +1,48 @@
 # Activity
 
+## 2026-10-27 — Localities from `Lista poligoane` (branch `feat/localities`)
+
+**Done**
+- `gazetteer/fetch_wikidata.py` (standard library only) and `gazetteer/localities.csv`: 16,978
+  Wikidata items with a SIRUTA code (P843). 16,970 have coordinates and a county. 13,745 are
+  village-level (`sat`, `localitate componentă`); the commune and town items are the admin units.
+  The brief says about 13,700 SIRUTA localities: 13,745 agrees. That figure is the brief's, not checked
+  against INS here.
+- `build_data.py`: parses `poligoane`, drops `Cerc`/`Poligon`/`polygon`, resolves each name, adds
+  `places` (`name`, `siruta`, `lat`, `lon`) per alert. `meta.places` holds the counts.
+  `data/unresolved_places.csv` (git-ignored) lists the unresolved names with a reason.
+- Map: red circle points for the selected alerts; radius grows with the count of alerts. Caption says a
+  point is the locality of the alert area. A click opens the Location view of the county with
+  `selectedLocality` set; `applyFilters` matches it on `places[].name` too.
+- Checked in headless Chrome from `file://`: 1,373 points, a click on one gives Harghita /
+  Odorheiu Secuiesc / 42 alerts, 0 JS errors. `alerts.js` grew from 7,200,209 to 7,456,527 bytes (+3.6%).
+
+**Measured**
+
+| Selection | Mentions | Resolved | No match | Ambiguous |
+|---|---|---|---|---|
+| Bear alerts Feb-Jul (1,963 alerts) | 924 | 909 (98.4%) | 0 | 15 |
+| Comper (reference) | 920 | 872 (94.8%) | 34 | 14 |
+| All alerts (3,385) | 3,611 | 3,426 (94.9%) | 54 | 131 |
+
+Also 2,361 generic geometry labels dropped. Bear filter: `\burs(ul|ului|ule|i|ii|ilor|oaic*)?\b` on the
+Romanian text without diacritics. It selects 1,963 alerts for Feb-Jul (`\burs\b` alone: 1,919).
+Comper: 1,958.
+
+**Decided**
+- Use village-level items as places. A commune or town item counts only when no village-level item has
+  the same name in the county. Alternative: keep all items; then each commune seat is "ambiguous" with its commune.
+- `București` and `București-Ilfov` alerts search the counties București and Ilfov together.
+  `SECTORUL N` and `BUCURESTI SECTORUL N` map to `SECTOR N`.
+- County alerts match inside the county only. National alerts match when the name is unique in Romania.
+  No fallback to other counties: a wrong county would put a point in the wrong place.
+
+**Hard / wrong turns**
+- One SPARQL query with `P131+` and county gave HTTP 504 (5 min). Four simple queries joined in Python
+  take 33 s.
+- Bear 0 no-match against 34 for Comper: assumed our gazetteer is complete, not checked name by name.
+  Of the 54 all-alert no-matches, 50 are county names (`ARGES`, `ILFOV`, `VALCEA`), not localities; 4 are names not in the gazetteer.
+
 ## 2026-10-27 — Review of the data-size branch (Opus)
 
 **Decided**

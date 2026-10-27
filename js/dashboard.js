@@ -9,6 +9,7 @@ function renderDashboard(rows, container) {
         <div id="map"></div>
         <div class="legend" id="map-legend"></div>
         <div class="map-hint" data-i18n="map_tap_hint">${t("map_tap_hint")}</div>
+        <div class="map-hint" data-i18n="map_places_note">${t("map_places_note")}</div>
       </section>
       <section class="panel">
         <h2 data-i18n="timeline_title">${t("timeline_title")}</h2>
