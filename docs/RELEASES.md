@@ -1,5 +1,6 @@
 # Releases
 
+- v0.7.0 — 2026-10-27 — "Pe scurt" view (bear share, evening share, monthly change, bear and storm per month, top localities), timeline with official totals for summary-only months, Sources and method section.
 - v0.6.0 — 2026-10-27 — Compact data bundle (`alerts.js` 4.5 MB, 458 KB gzip; `geo.js` 251 KB). Localities from `Lista poligoane` via a Wikidata SIRUTA gazetteer (94.9% of mentions resolved), with a point layer on the map.
 - v0.5.0 — 2026-10-27 — Briefs: data size, localities from `Lista poligoane`, story view. Verified limit: GitHub-hosted runners cannot reach data.gov.ro.
 - v0.4.0 — 2026-10-27 — One alert per message, with a deliveries list (April: 470 rows → 237 alerts); failed-alerts KPI; delivery-failure figure for reporting months. 3385 alerts, Feb–Aug 2026.
