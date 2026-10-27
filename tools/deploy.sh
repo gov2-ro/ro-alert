@@ -5,10 +5,13 @@
 #
 # The env file (default: .env at the repo root) sets:
 #   DEPLOY_PATH      Target folder. Required. The script creates it when it is missing.
+#                    "~/x" is x in the home folder of the target (local or remote).
 #   DEPLOY_HOST      SSH destination, for example "deploy@vps.example.ro". Empty: copy locally.
 #   DEPLOY_PORT      SSH port. Optional; default 22.
 #   DEPLOY_DELETE    "1" removes stale files inside the copied folders (css/, js/, vendor/).
 #                    Files outside those folders are never removed. Optional; default 0.
+#
+# The script reads the file as plain KEY=VALUE lines; it does not run it as shell code.
 #
 # The script copies only the files that the page loads: index.html, css/, js/, vendor/ and
 # the three data bundles. It refuses to copy when one of these files has uncommitted
@@ -32,10 +35,19 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "deploy: env file not found: $ENV_FILE (copy .env.example to .env)" >&2
   exit 2
 fi
-set -a
-# shellcheck disable=SC1090
-. "$ENV_FILE"
-set +a
+# Read KEY=VALUE lines as plain text. The shell does not evaluate the file, so a leading
+# "~" stays literal and refers to the home folder on the target, not on this machine.
+while IFS= read -r line || [ -n "$line" ]; do
+  line="${line%$'\r'}"
+  case "$line" in ''|'#'*) continue ;; esac
+  key="${line%%=*}"; val="${line#*=}"
+  key="${key//[[:space:]]/}"
+  case "$val" in \"*\") val="${val:1:${#val}-2}" ;; \'*\') val="${val:1:${#val}-2}" ;; esac
+  case "$key" in
+    DEPLOY_PATH|DEPLOY_HOST|DEPLOY_PORT|DEPLOY_DELETE|DEPLOY_ALLOW_DIRTY) printf -v "$key" '%s' "$val" ;;
+    *) echo "deploy: ignored unknown key in $ENV_FILE: $key" >&2 ;;
+  esac
+done < "$ENV_FILE"
 
 DEPLOY_HOST="${DEPLOY_HOST:-}"
 DEPLOY_PORT="${DEPLOY_PORT:-22}"
@@ -47,6 +59,11 @@ case "$DEPLOY_PATH" in
     echo "deploy: DEPLOY_PATH is empty or unsafe: '$DEPLOY_PATH'" >&2; exit 2 ;;
 esac
 DEPLOY_PATH="${DEPLOY_PATH%/}"
+# "~/x" means x in the home folder of the target. Locally that is $HOME/x. Over SSH, a path
+# without a leading "/" is relative to the remote home folder, for both ssh and rsync.
+case "$DEPLOY_PATH" in
+  "~/"*) if [ -z "$DEPLOY_HOST" ]; then DEPLOY_PATH="$HOME/${DEPLOY_PATH#\~/}"; else DEPLOY_PATH="${DEPLOY_PATH#\~/}"; fi ;;
+esac
 
 FILES=(index.html css/ js/ vendor/ data/alerts.js data/meta.js data/geo.js)
 

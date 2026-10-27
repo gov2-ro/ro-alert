@@ -1,5 +1,6 @@
 # Releases
 
+- v0.15.1 — 2026-10-28 — Deploy script: `~/` in `DEPLOY_PATH` refers to the target's home folder; `.env` is read as plain text, not run as shell code.
 - v0.15.0 — 2026-10-27 — Audit phase 06, browsing and rendering: 50-record pages in Table, Feed and Local with page in the URL; JSON export of the full selection with sources and coverage; map and charts kept across filter and language changes, with a Fit selection button; loading text and a readable load-error screen with Retry. Feed DOM 48,220 → 767 elements. Completes the audit follow-up (phases 01–06).
 - v0.14.0 — 2026-10-27 — Audit phase 05, visual and geographic architecture: coverage bar above every view; three overview cards instead of six; map modes for counties and localities with exact legends; visible national-alert count (488) and București-Ilfov convention; one reporting-quality section per view; neutral colours for monthly changes; whole-number chart axes.
 - v0.13.0 — 2026-10-27 — Deploy script: `tools/deploy.sh` copies the page files to a local folder or an SSH host, configured from `.env`.

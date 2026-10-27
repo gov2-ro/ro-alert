@@ -1,5 +1,18 @@
 # Activity
 
+## 2026-10-28 — Deploy script: remote home paths
+
+**Done**
+- `tools/deploy.sh` read `.env` with the shell, so `DEPLOY_PATH=~/x` expanded to the local home
+  (`/Users/...`) before it went to the remote host. The remote `mkdir` failed with permission denied.
+- The script now reads `.env` as plain `KEY=VALUE` lines. A leading `~/` means the home folder of the
+  target: `$HOME` locally, and a path relative to the remote home over SSH. Unknown keys give a warning.
+- Tested with stub `ssh` and `rsync`: remote `~/lab.gov2.ro/ro-alert` becomes `host:lab.gov2.ro/ro-alert`,
+  the port is passed, quotes are removed. Local `~/x` becomes `$HOME/x`. No real host was contacted.
+
+**Decided**
+- Do not source `.env`. Reading values as text avoids local expansion and does not run code from the file.
+
 ## 2026-10-27 — Audit phase 06: browsing, export and rendering (branch `feat/audit-06-browsing`, Sonnet)
 
 **Done**
