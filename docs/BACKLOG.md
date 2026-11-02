@@ -230,3 +230,7 @@ layer is *resolution* — turning candidates into validated places + coordinates
 - [-] Run the ingest on GitHub-hosted runners. The connection to data.gov.ro timed out in
   2 of 2 runs (run 40526336961 and its re-run, 2026-10-27). The runners are in Azure; the
   site likely blocks or drops that traffic. Use the VPS instead.
+
+
+## Misc
+- [ ] create /llms.txt, then let ~/devbox/gov2/gov2.ro know, to update their llms.txt - or submit an issue to [gov2-ro/gov2-alpha-sunrise](https://github.com/gov2-ro/gov2-alpha-sunrise)
