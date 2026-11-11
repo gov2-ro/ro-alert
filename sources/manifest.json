@@ -435,5 +435,32 @@
     "warnings": [
       "Grand Total 556 differs from row count 557"
     ]
+  },
+  {
+    "dataset": "mesaje-ro-alert-luna-septembrie2026",
+    "resource_id": "246da09b-1407-42b5-93ca-766866dd762e",
+    "url": "https://data.gov.ro/dataset/66027ce5-2edf-4a0d-81a4-ca28f760011b/resource/246da09b-1407-42b5-93ca-766866dd762e/download/raport-ro-alert-septembrie-26.xls",
+    "last_modified": "2026-10-30T09:55:29.276953",
+    "fetched_at": "2026-11-11T13:01:45Z",
+    "sha256": "829636d4da509edffa47b2bf8cdd33b20186186155eea0c9b8e2c351d7b214b0",
+    "month": "2026-09",
+    "month_source": "dataset title",
+    "shape": "R",
+    "rows": 453,
+    "grand_total": 453,
+    "reports_errors": false,
+    "columns": [
+      "Nr. crt.",
+      "Nume si data alerta",
+      "Tip inregistrare",
+      "Initiator alerta",
+      "Risc principal",
+      "Risc asociat",
+      "Data trimitere",
+      "Status trimitere",
+      "Lista poligoane",
+      "Continut mesaj"
+    ],
+    "warnings": []
   }
 ]
